@@ -1,0 +1,47 @@
+# Vision: {{ project_name }}
+
+Last confirmed: {{ confirmed_date }}
+Last updated: {{ updated_date }}
+Confirmed by: vision-keeper (workforce)
+
+---
+
+## What it is
+
+{{ what_it_is }}
+
+## Problem it solves
+
+{{ problem }}
+
+## Primary user
+
+{{ primary_user }}
+
+## The core action
+
+{{ core_action }}
+
+## Non-negotiables
+
+These properties must always be true. They cannot be traded off.
+
+{% for item in non_negotiables %}
+- {{ item }}
+{% endfor %}
+
+## Explicitly out of scope (current version)
+
+These are conscious exclusions. If someone asks for them, the answer is "not now."
+
+{% for item in out_of_scope %}
+- {{ item }}
+{% endfor %}
+
+## Drift watchlist
+
+Check on each Workforce run — directions that could pull the product away from its core:
+
+{% for item in drift_watchlist %}
+- {{ item }}
+{% endfor %}

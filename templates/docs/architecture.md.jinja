@@ -1,0 +1,129 @@
+# {{ project_name }} — Architecture
+
+Read this doc before: adding a component, tracing a data flow, planning an integration, or reviewing a PR that touches system boundaries.
+
+---
+
+## Overview
+
+[ Architect agent fills this in: 2–3 sentences on what the system does, who the users are, and the primary constraint driving the architecture (latency / cost / compliance / offline-first / etc.). ]
+
+**Stack:** {{ stack }}
+
+---
+
+## Component Diagram
+
+```
+┌─────────────────────────────────────────────────┐
+│  Client (Browser / Desktop / Mobile)            │
+│  — describe the client layer here —             │
+└────────────────────┬────────────────────────────┘
+                     │ HTTPS / WebSocket
+┌────────────────────▼────────────────────────────┐
+│  API Layer ({{ stack }})                        │
+│  ┌───────────┐  ┌──────────┐  ┌──────────────┐  │
+│  │  Auth     │  │  Core    │  │  Background  │  │
+│  │  Routes   │  │  Routes  │  │  Workers     │  │
+│  └─────┬─────┘  └────┬─────┘  └──────┬───────┘  │
+│        │             │               │           │
+│  ┌─────▼─────────────▼───────────────▼─────────┐│
+│  │  Data Layer (DB + Cache + Queue)             ││
+│  └──────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────┘
+```
+
+### Components
+
+| Component | Responsibility | Owns | Depends On |
+|-----------|---------------|------|------------|
+| API server | HTTP request handling, routing, auth middleware | Route handlers, middleware | DB, Cache |
+| Data layer | Persistence, querying, migrations | Models, repos, migrations | PostgreSQL |
+| Cache layer | Session state, rate-limit counters, pub/sub | TTL keys, Streams | Redis |
+| Worker | Async background jobs (email, webhooks, AI) | Job queue consumers | DB, Cache, external APIs |
+| Client | UI, state management, API calls | Pages, components, stores | API server |
+
+---
+
+## Data Model
+
+```
+[ Architect agent fills in entity-relationship summary. Format:
+
+  Entity          Columns (key ones)              Relations
+  ─────────────── ──────────────────────────────── ──────────────────────
+  users           id (UUIDv7), email, role         belongs to org
+  orgs            id, name, plan                   has many users
+  ...
+]
+```
+
+### Key design choices
+- **ID strategy:** UUID v7 (time-ordered, better B-tree index locality)
+- **Multi-tenancy:** org-scoped rows in single DB (row-level isolation via `org_id` FK)
+- **Soft delete:** `deleted_at` timestamp on all user-owned entities
+- **Timestamps:** `created_at`, `updated_at` on every table (set by DB default + trigger)
+
+---
+
+## API Surface
+
+```
+[ Architect agent fills in route groups. Format:
+
+  POST   /auth/register         — create user + org
+  POST   /auth/login            — issue JWT pair
+  POST   /auth/refresh          — rotate access token
+  DELETE /auth/logout           — revoke refresh token (JTI blocklist)
+
+  GET    /v1/resource           — list (paginated, org-scoped)
+  POST   /v1/resource           — create
+  GET    /v1/resource/:id       — fetch one
+  PATCH  /v1/resource/:id       — update (partial)
+  DELETE /v1/resource/:id       — soft delete
+]
+```
+
+**Auth:** Bearer JWT (access token, 15 min TTL) + refresh token (httpOnly cookie, 7 day TTL).
+**Pagination:** cursor-based (`?after=<id>&limit=50`) on all list endpoints.
+**Errors:** RFC 7807 Problem Details (`{ "type", "title", "status", "detail" }`).
+
+---
+
+## Security Architecture
+
+| Concern | Mechanism |
+|---------|-----------|
+| Authentication | JWT HS256 (access + refresh), refresh via httpOnly cookie |
+| Authorization | RBAC middleware — role checked on every protected route |
+| Secrets | Loaded from env only; never committed; `.env` gitignored |
+| Passwords | bcrypt cost 12; never stored in plaintext |
+| Rate limiting | Redis sliding-window counter, 10 req/min on auth endpoints |
+| Input validation | Pydantic / Zod schema on every user-supplied field |
+| CORS | Allowlist of known origins; wildcard forbidden in production |
+| SQL injection | ORM parameterized queries only; no raw string interpolation |
+| XSS | DOMPurify on rendered user content; CSP headers via middleware |
+
+---
+
+## Observability
+
+| Signal | Tool | Notes |
+|--------|------|-------|
+| Structured logs | structlog / pino | JSON, correlation IDs on every request |
+| Error tracking | Sentry | Backend + frontend, environment-tagged |
+| Metrics | (add your metrics sink here) | p50/p95/p99 latency per route |
+| Traces | (add your tracing provider here) | Distributed trace across API + worker |
+| Uptime | (add your uptime monitor here) | Alert on 2 consecutive failures |
+
+---
+
+## Failure Modes
+
+| Scenario | Behavior | Recovery |
+|----------|----------|----------|
+| DB connection lost | API returns 503 after 3 retries | Auto-reconnect with exponential backoff |
+| Cache (Redis) unreachable | Degrade gracefully — skip cache, serve from DB | Log warning; continue; restore on reconnect |
+| External API timeout | Return cached result or user-facing error after 10 s | Retry with exponential backoff (max 3) |
+| Worker crash | Job stays in queue (at-least-once delivery) | Worker restarts automatically; idempotent handlers |
+| Auth service outage | All protected routes return 503 | N/A — auth is embedded; no external dependency |

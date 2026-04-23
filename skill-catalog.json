@@ -1,0 +1,37 @@
+{
+  "python-fastapi": [
+    "postgres-pro",
+    "docker-expert",
+    "api-designer",
+    "test-automator"
+  ],
+  "nextjs-fullstack": [
+    "webapp-testing",
+    "typescript-pro",
+    "deployment-engineer"
+  ],
+  "python-fastapi-nextjs": [
+    "postgres-pro",
+    "webapp-testing",
+    "docker-expert",
+    "api-designer"
+  ],
+  "python-cli": [
+    "python-pro",
+    "test-automator"
+  ],
+  "fullstack-desktop": [
+    "docker-expert",
+    "deployment-engineer",
+    "webapp-testing"
+  ],
+  "microservices": [
+    "postgres-pro",
+    "docker-expert",
+    "api-designer"
+  ],
+  "react-native": [
+    "webapp-testing",
+    "typescript-pro"
+  ]
+}

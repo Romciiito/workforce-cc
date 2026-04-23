@@ -1,0 +1,42 @@
+# {{ project_name }}
+
+{{ description }}
+
+**Stack:** {{ stack }}
+
+---
+
+## Behavioral Rules (mandatory every session)
+
+1. **Workplan tracking** — Update `workplan.md` checkboxes immediately when any task completes. When all items in a phase are done, add ✅ to the phase header and the summary table. Never defer tracking to a later session.
+2. **Security is non-negotiable** — Security items in workplan Phase 0 must be completed before Phase 1 begins. Never defer or skip them.
+3. **Read before acting** — Before starting any task, read the relevant doc in `docs/claude/` listed in the pointer table below. Do not rely on memory.
+4. **No secrets in code** — Credentials and keys live only in `.env` (gitignored). Never hard-code them, never commit them.
+5. **Prefer editing over creating** — Always edit an existing file rather than creating a new one when possible.
+
+---
+
+## Pointer Table
+
+| Doc | Read when you're about to... |
+|-----|------------------------------|
+| `docs/claude/architecture.md` | Understand the system, add a component, trace a data flow |
+| `docs/claude/development.md` | Run locally, write a test, add a route/model/page, deploy |
+| `docs/claude/design-decisions.md` | Question why something is built a certain way, propose alternatives |
+| `docs/claude/env-vars.md` | Add a new config value, debug a missing env var, set up a new environment |
+
+---
+
+## Critical Gotchas
+
+- All env vars use the `{{ project_name | upper | replace("-", "_") | replace(" ", "_") }}_` prefix — never use bare names.
+- Check `docs/claude/development.md` for exact run commands before assuming defaults.
+- See `docs/claude/design-decisions.md` before proposing a stack or architecture change.
+{% if critical_rules %}
+
+---
+
+## Project-Specific Rules
+
+{{ critical_rules }}
+{% endif %}

@@ -1,0 +1,268 @@
+# {{ project_name }} — Development Guide
+
+Read this doc before: running the project locally, writing a test, adding a route/model/page, or deploying.
+
+---
+
+## Prerequisites
+
+{% if stack in ["python-fastapi", "python-fastapi-nextjs", "fullstack-desktop", "python-cli"] %}
+- **Python 3.12+** — `python3 --version`
+- **uv** (recommended) or pip — `pip install uv`
+{% endif %}
+{% if stack in ["nextjs-fullstack", "python-fastapi-nextjs", "fullstack-desktop"] %}
+- **Node.js 20+** — `node --version`
+- **npm 10+** — `npm --version`
+{% endif %}
+{% if stack in ["python-fastapi", "python-fastapi-nextjs", "fullstack-desktop"] %}
+- **Docker + Docker Compose** — for local Postgres + Redis
+{% endif %}
+{% if stack == "fullstack-desktop" %}
+- **Rust + cargo** — `rustup install stable`
+- **Tauri CLI** — `cargo install tauri-cli`
+{% endif %}
+- Copy `.env.example` to `.env` and fill in all required values (see `docs/claude/env-vars.md`)
+
+---
+
+## Running Locally
+
+{% if stack == "python-fastapi" %}
+```bash
+# 1. Start infrastructure
+docker compose up -d postgres redis
+
+# 2. Install dependencies
+cd backend
+uv sync              # or: pip install -e ".[dev]"
+
+# 3. Run migrations
+uv run alembic upgrade head
+
+# 4. Start API server (inline worker mode — no separate worker process)
+uv run python -m src api
+# → http://localhost:8000
+# → http://localhost:8000/docs  (Swagger UI)
+```
+
+{% elif stack == "nextjs-fullstack" %}
+```bash
+# 1. Install dependencies
+cd frontend
+npm install
+
+# 2. Start dev server
+npm run dev
+# → http://localhost:3000
+```
+
+{% elif stack == "python-fastapi-nextjs" %}
+```bash
+# 1. Start infrastructure
+docker compose up -d postgres redis
+
+# 2. Backend
+cd backend
+uv sync
+uv run alembic upgrade head
+uv run python -m src api
+# → http://localhost:8000
+
+# 3. Frontend (new terminal)
+cd frontend
+npm install
+npm run dev
+# → http://localhost:3000
+```
+
+{% elif stack == "python-cli" %}
+```bash
+# 1. Install dependencies
+uv sync              # or: pip install -e ".[dev]"
+
+# 2. Run CLI
+uv run {{ project_name | lower | replace(" ", "-") }} --help
+```
+
+{% elif stack == "fullstack-desktop" %}
+```bash
+# 1. Start infrastructure
+docker compose up -d postgres redis
+
+# 2. Backend
+cd backend
+uv sync
+uv run alembic upgrade head
+uv run python -m src api
+# → http://localhost:8000
+
+# 3. Frontend (new terminal)
+cd frontend
+npm install
+npm run dev
+# → http://localhost:3000
+
+# 4. Tauri desktop shell (new terminal — loads localhost:3000)
+cd src-tauri
+cargo tauri dev
+```
+
+{% else %}
+```bash
+# [ Fill in run commands for stack: {{ stack }} ]
+```
+{% endif %}
+
+---
+
+## Running Tests
+
+{% if stack in ["python-fastapi", "python-fastapi-nextjs", "fullstack-desktop", "python-cli"] %}
+### Backend
+
+```bash
+{% if stack == "python-cli" %}
+uv run pytest tests/ -v
+uv run pytest tests/ -m unit -v          # unit tests only
+{% else %}
+# Requires running Postgres (docker compose up -d postgres)
+cd backend
+uv run pytest tests/ -v                  # all tests
+uv run pytest tests/ -m unit -v         # unit tests only (no DB)
+uv run pytest tests/ -m integration -v  # integration tests (needs DB)
+uv run pytest tests/test_auth.py -v     # single file
+```
+{% endif %}
+
+**Test layout:**
+```
+tests/
+  unit/           — pure logic, no I/O, no DB (fast)
+  integration/    — real DB + Redis, use fixtures for setup/teardown
+  conftest.py     — shared fixtures (async session, test client, factories)
+```
+{% endif %}
+
+{% if stack in ["nextjs-fullstack", "python-fastapi-nextjs", "fullstack-desktop"] %}
+### Frontend
+
+```bash
+cd frontend
+npm test                   # Jest + React Testing Library (unit)
+npm run test:watch         # watch mode
+npm run e2e                # Playwright end-to-end
+```
+{% endif %}
+
+---
+
+## Common Tasks
+
+{% if stack in ["python-fastapi", "python-fastapi-nextjs", "fullstack-desktop"] %}
+### Add an API route
+
+1. Create `backend/src/api/routes/<resource>.py`
+2. Define a `router = APIRouter(prefix="/v1/<resource>", tags=["<resource>"])`
+3. Register in `backend/src/api/main.py`: `app.include_router(resource_router)`
+4. Add auth dependency: `Depends(require_auth)` on protected endpoints
+5. Write at least one integration test in `backend/tests/integration/test_<resource>.py`
+
+### Add a DB model
+
+1. Define the SQLAlchemy model in `backend/src/database/models/<entity>.py`
+2. Import it in `backend/src/database/models/__init__.py` so Alembic sees it
+3. Generate migration: `uv run alembic revision --autogenerate -m "add <entity>"`
+4. Review the generated migration file — always check for destructive ops
+5. Apply: `uv run alembic upgrade head`
+6. Add a repository class in `backend/src/database/repos/<entity>_repo.py`
+
+### Add a background task
+
+1. Add the job function to `backend/src/worker/tasks.py`
+2. Enqueue via Redis Streams producer in the route handler
+3. Register the consumer in `backend/src/worker/consumer.py`
+{% endif %}
+
+{% if stack in ["nextjs-fullstack", "python-fastapi-nextjs", "fullstack-desktop"] %}
+### Add a frontend page
+
+1. Create `frontend/src/app/(dashboard)/<route>/page.tsx`
+2. If the page needs data, add the API call to `frontend/src/lib/api.ts`
+3. Wrap in a TanStack Query hook: `frontend/src/hooks/use<Resource>.ts`
+4. Add the nav link to the sidebar/nav component
+
+### Add a UI component
+
+1. Check if a shadcn/ui primitive covers the need first (`npx shadcn-ui add <component>`)
+2. If custom, create in `frontend/src/components/<domain>/<ComponentName>.tsx`
+3. Use Tailwind for styling — no inline styles, no CSS modules
+4. Export from the domain barrel: `frontend/src/components/<domain>/index.ts`
+
+### Add a Zustand store
+
+1. Create `frontend/src/stores/<domain>Store.ts`
+2. Define the state interface and actions
+3. Export a typed hook: `export const use<Domain>Store = create<State>()(...)`
+{% endif %}
+
+{% if stack == "python-cli" %}
+### Add a CLI command
+
+1. Add a new `@cli.command()` in `src/cli.py` (or a sub-group file)
+2. Use `typer` types for arguments and options — never `sys.argv`
+3. Add a test in `tests/test_cli.py` using `typer.testing.CliRunner`
+{% endif %}
+
+---
+
+## Deployment
+
+{% if stack in ["python-fastapi", "python-fastapi-nextjs", "fullstack-desktop"] %}
+### Environment setup
+
+```bash
+# Production — set these in your deployment platform, never in code:
+DATABASE_URL=postgresql+asyncpg://...
+REDIS_URL=redis://...
+JWT_SECRET=<openssl rand -hex 32>
+ENVIRONMENT=production
+```
+
+### Database migrations (run before each deploy)
+
+```bash
+uv run alembic upgrade head
+```
+{% endif %}
+
+{% if stack == "fullstack-desktop" %}
+### Desktop build (Tauri)
+
+```bash
+# Build frontend static export
+cd frontend && npm run build
+
+# Bundle desktop app (produces platform-specific installer)
+cd src-tauri && cargo tauri build
+# Output: src-tauri/target/release/bundle/
+```
+{% endif %}
+
+{% if stack in ["nextjs-fullstack", "python-fastapi-nextjs"] %}
+### Frontend deploy
+
+```bash
+cd frontend
+npm run build          # static export or server build
+# Deploy dist/out/ to your hosting platform
+```
+{% endif %}
+
+{% if stack == "python-cli" %}
+### Package / distribute
+
+```bash
+uv build               # produces dist/*.whl + dist/*.tar.gz
+pipx install dist/*.whl  # local install for testing
+```
+{% endif %}

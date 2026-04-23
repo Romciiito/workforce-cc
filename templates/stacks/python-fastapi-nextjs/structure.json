@@ -1,0 +1,43 @@
+{
+  "dirs": [
+    "backend/src/api/routes",
+    "backend/src/core",
+    "backend/src/database/models",
+    "backend/src/database/repos",
+    "backend/tests/unit",
+    "backend/tests/integration",
+    "frontend/src/app/(auth)",
+    "frontend/src/app/(dashboard)",
+    "frontend/src/components/ui",
+    "frontend/src/lib",
+    "frontend/src/hooks",
+    "frontend/src/stores",
+    "frontend/src/types",
+    ".github/workflows"
+  ],
+  "files": {
+    "backend/src/__init__.py": "",
+    "backend/src/api/__init__.py": "",
+    "backend/src/api/routes/__init__.py": "",
+    "backend/src/core/__init__.py": "",
+    "backend/src/database/__init__.py": "",
+    "backend/src/database/models/__init__.py": "",
+    "backend/src/database/repos/__init__.py": "",
+    "backend/tests/__init__.py": "",
+    "backend/tests/unit/__init__.py": "",
+    "backend/tests/integration/__init__.py": "",
+    "backend/src/core/config.py": "from pydantic_settings import BaseSettings\n\n\nclass Settings(BaseSettings):\n    database_url: str = \"postgresql+asyncpg://localhost/app\"\n    redis_url: str = \"redis://localhost:6379\"\n    jwt_secret: str = \"change-me\"\n    environment: str = \"development\"\n    log_level: str = \"info\"\n    cors_origins: list[str] = [\"http://localhost:3000\"]\n\n    class Config:\n        env_prefix = \"APP_\"\n        env_file = \".env\"\n\n\nsettings = Settings()\n",
+    "backend/src/core/logging.py": "import structlog\n\nstructlog.configure(\n    processors=[\n        structlog.contextvars.merge_contextvars,\n        structlog.processors.add_log_level,\n        structlog.processors.TimeStamper(fmt=\"iso\"),\n        structlog.processors.JSONRenderer(),\n    ]\n)\n\nlogger = structlog.get_logger()\n",
+    "backend/src/api/main.py": "from fastapi import FastAPI\nfrom fastapi.middleware.cors import CORSMiddleware\nfrom src.core.config import settings\n\napp = FastAPI(title=\"{{ project_name }} API\", version=\"0.1.0\")\n\napp.add_middleware(\n    CORSMiddleware,\n    allow_origins=settings.cors_origins,\n    allow_credentials=True,\n    allow_methods=[\"*\"],\n    allow_headers=[\"*\"],\n)\n\n\n@app.get(\"/health\")\nasync def health() -> dict:\n    return {\"status\": \"ok\"}\n",
+    "backend/tests/conftest.py": "import pytest\nfrom httpx import AsyncClient, ASGITransport\nfrom src.api.main import app\n\n\n@pytest.fixture\nasync def client() -> AsyncClient:\n    async with AsyncClient(transport=ASGITransport(app=app), base_url=\"http://test\") as ac:\n        yield ac\n",
+    "backend/pyproject.toml": "[project]\nname = \"{{ project_name }}-backend\"\nversion = \"0.1.0\"\nrequires-python = \">=3.12\"\ndependencies = [\n    \"fastapi>=0.115\",\n    \"uvicorn[standard]>=0.30\",\n    \"sqlalchemy[asyncio]>=2.0\",\n    \"alembic>=1.13\",\n    \"asyncpg>=0.29\",\n    \"pydantic-settings>=2.0\",\n    \"structlog>=24.0\",\n    \"python-jose[cryptography]>=3.3\",\n    \"passlib[bcrypt]>=1.7\",\n    \"redis[hiredis]>=5.0\",\n]\n\n[project.optional-dependencies]\ndev = [\n    \"pytest>=8.0\",\n    \"pytest-asyncio>=0.23\",\n    \"httpx>=0.27\",\n    \"pytest-cov>=5.0\",\n]\n\n[tool.pytest.ini_options]\nasyncio_mode = \"auto\"\n",
+    "frontend/src/types/index.ts": "export interface User {\n  id: string;\n  email: string;\n  name: string;\n  role: string;\n  createdAt: string;\n}\n\nexport interface ApiError {\n  type: string;\n  title: string;\n  status: number;\n  detail: string;\n}\n\nexport interface PaginatedResponse<T> {\n  items: T[];\n  total: number;\n  nextCursor: string | null;\n}\n",
+    "frontend/src/lib/api.ts": "import axios from 'axios';\n\nconst api = axios.create({\n  baseURL: process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000',\n  withCredentials: true,\n  headers: { 'Content-Type': 'application/json' },\n});\n\nlet _accessToken: string | null = null;\nexport const setAccessToken = (token: string | null) => { _accessToken = token; };\n\napi.interceptors.request.use((config) => {\n  if (_accessToken) config.headers.Authorization = `Bearer ${_accessToken}`;\n  return config;\n});\n\napi.interceptors.response.use(\n  (res) => res,\n  async (err) => {\n    const original = err.config;\n    if (err.response?.status === 401 && !original._retry) {\n      original._retry = true;\n      try {\n        const { data } = await api.post('/auth/refresh');\n        setAccessToken(data.accessToken);\n        original.headers.Authorization = `Bearer ${data.accessToken}`;\n        return api(original);\n      } catch {\n        setAccessToken(null);\n        window.location.href = '/login';\n      }\n    }\n    return Promise.reject(err);\n  }\n);\n\nexport default api;\n",
+    "frontend/src/lib/utils.ts": "import { clsx, type ClassValue } from 'clsx';\nimport { twMerge } from 'tailwind-merge';\n\nexport function cn(...inputs: ClassValue[]) {\n  return twMerge(clsx(inputs));\n}\n",
+    "frontend/src/stores/authStore.ts": "import { create } from 'zustand';\nimport { User } from '@/types';\n\ninterface AuthState {\n  user: User | null;\n  isAuthenticated: boolean;\n  setUser: (user: User | null) => void;\n  logout: () => void;\n}\n\nexport const useAuthStore = create<AuthState>((set) => ({\n  user: null,\n  isAuthenticated: false,\n  setUser: (user) => set({ user, isAuthenticated: !!user }),\n  logout: () => set({ user: null, isAuthenticated: false }),\n}));\n",
+    "frontend/package.json": "{\n  \"name\": \"{{ project_name }}-frontend\",\n  \"version\": \"0.1.0\",\n  \"private\": true,\n  \"scripts\": {\n    \"dev\": \"next dev\",\n    \"build\": \"next build\",\n    \"start\": \"next start\",\n    \"lint\": \"next lint\",\n    \"test\": \"jest --passWithNoTests\",\n    \"e2e\": \"playwright test\"\n  },\n  \"dependencies\": {\n    \"next\": \"^15.0.0\",\n    \"react\": \"^19.0.0\",\n    \"react-dom\": \"^19.0.0\",\n    \"@tanstack/react-query\": \"^5.0.0\",\n    \"zustand\": \"^5.0.0\",\n    \"axios\": \"^1.7.0\",\n    \"zod\": \"^3.23.0\",\n    \"clsx\": \"^2.1.0\",\n    \"tailwind-merge\": \"^2.4.0\",\n    \"sonner\": \"^1.5.0\",\n    \"dompurify\": \"^3.1.0\"\n  },\n  \"devDependencies\": {\n    \"typescript\": \"^5.5.0\",\n    \"@types/react\": \"^19.0.0\",\n    \"@types/node\": \"^22.0.0\",\n    \"tailwindcss\": \"^3.4.0\",\n    \"postcss\": \"^8.4.0\",\n    \"autoprefixer\": \"^10.4.0\",\n    \"jest\": \"^29.0.0\",\n    \"@testing-library/react\": \"^16.0.0\",\n    \"@playwright/test\": \"^1.45.0\"\n  }\n}\n",
+    "docker-compose.yml": "services:\n  postgres:\n    image: pgvector/pgvector:pg16\n    environment:\n      POSTGRES_USER: app\n      POSTGRES_PASSWORD: app\n      POSTGRES_DB: appdb\n    ports:\n      - \"5432:5432\"\n    volumes:\n      - postgres_data:/var/lib/postgresql/data\n    healthcheck:\n      test: [\"CMD-SHELL\", \"pg_isready -U app\"]\n      interval: 5s\n      retries: 10\n\n  redis:\n    image: redis:7-alpine\n    ports:\n      - \"6379:6379\"\n    command: redis-server --save 60 1\n    volumes:\n      - redis_data:/data\n    healthcheck:\n      test: [\"CMD\", \"redis-cli\", \"ping\"]\n      interval: 5s\n      retries: 10\n\nvolumes:\n  postgres_data:\n  redis_data:\n",
+    ".env.example": "# Backend\nAPP_DATABASE_URL=postgresql+asyncpg://app:app@localhost/appdb\nAPP_REDIS_URL=redis://localhost:6379\nAPP_JWT_SECRET=generate-with-openssl-rand-hex-32\nAPP_ENVIRONMENT=development\nAPP_LOG_LEVEL=info\nAPP_CORS_ORIGINS=http://localhost:3000\n\n# Frontend (NEXT_PUBLIC_ prefix = exposed to browser)\nNEXT_PUBLIC_API_URL=http://localhost:8000\nNEXT_PUBLIC_APP_URL=http://localhost:3000\n",
+    ".gitignore": ".env\n.env.local\n__pycache__/\n*.pyc\n.pytest_cache/\n.coverage\nhtmlcov/\ndist/\nbuild/\n*.egg-info/\n.venv/\n.next/\nout/\nnode_modules/\n.DS_Store\n*.log\n"
+  }
+}

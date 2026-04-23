@@ -1,0 +1,66 @@
+# {{ project_name }} — Workplan
+
+## Summary
+
+| Phase | Title | Status |
+|-------|-------|--------|
+| 0 | Security & Foundations | [ ] |
+| 1 | Core Data Layer | [ ] |
+| 2 | API Layer | [ ] |
+| 3 | Frontend / Client | [ ] |
+| 4 | Integrations | [ ] |
+| 5 | Observability & Hardening | [ ] |
+
+---
+
+{# Workplan-builder agent writes the phase sections below this line. #}
+
+{# ── EXAMPLE PHASES (illustrating expected format) ──────────────────────────
+   The workplan-builder agent replaces the `phases` variable above.
+   Below is the canonical shape every phase must follow.
+   ─────────────────────────────────────────────────────────────────────────── #}
+
+{# EXAMPLE — Phase 0 ─────────────────────────────────────────────────────── #}
+{# ## Phase 0 — Security & Foundations
+   **Status:** [ ] Not started
+
+   **Done when:** Auth works end-to-end, secrets are gitignored, RBAC
+   middleware rejects unauthorized requests, all Phase 0 security items pass.
+
+   ### Security checklist (non-negotiable — must finish before Phase 1)
+   - [ ] `.env` in `.gitignore`, `.env.example` committed with placeholder values
+   - [ ] Secrets never hard-coded; loaded only via settings/config module
+   - [ ] JWT signing key is randomly generated (≥ 256 bits), never committed
+   - [ ] Passwords hashed with bcrypt (cost ≥ 12) — never stored in plaintext
+   - [ ] Auth endpoints rate-limited (e.g. 10 req/min per IP)
+   - [ ] RBAC middleware in place; all protected routes return 401/403 correctly
+   - [ ] Input validation on all user-supplied fields (Pydantic / Zod schema)
+   - [ ] CORS restricted to known origins (no wildcard in production)
+
+   ### Tasks
+   - [ ] Initialize repo, set up pyproject.toml / package.json, commit baseline
+   - [ ] Configure environment variable loading (pydantic-settings / dotenv)
+   - [ ] Create database schema + initial Alembic migration
+   - [ ] Implement JWT auth (issue, verify, refresh, revoke)
+   - [ ] Implement RBAC middleware (role checked on every protected route)
+   - [ ] Write smoke tests: register → login → protected route → 401 without token
+   - [ ] Update workplan ✅
+#}
+
+{# EXAMPLE — Phase 1 ─────────────────────────────────────────────────────── #}
+{# ## Phase 1 — Core Data Layer
+   **Status:** [ ] Not started
+
+   **Done when:** All primary entities have models, migrations, repositories,
+   and ≥ 1 integration test per entity covering CRUD.
+
+   ### Tasks
+   - [ ] Define SQLAlchemy models for primary entities
+   - [ ] Write Alembic migration for initial schema
+   - [ ] Implement repository classes (async CRUD + query helpers)
+   - [ ] Add soft-delete pattern (deleted_at column) to all user-owned entities
+   - [ ] Seed script for local development data
+   - [ ] Unit tests: model constraints, repo queries
+   - [ ] Integration test: round-trip create → read → update → soft-delete
+   - [ ] Update workplan ✅
+#}

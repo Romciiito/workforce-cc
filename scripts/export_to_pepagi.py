@@ -1,0 +1,278 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+export_to_pepagi.py
+───────────────────
+Offline equivalent of `src/bootstrap/foundation-bridge.ts`.
+
+Walks Foundation's markdown agent definitions and emits one standalone
+ESM `.js` skill file per agent into `~/.pepagi/skills/` (or the
+directory passed via --out-dir). Each generated file exports a default
+SkillDefinition whose handler returns a static stub message pointing
+the user back to Claude Code — the same behaviour as the TS bridge,
+but without requiring users to modify PEPAGI's source.
+
+Usage:
+    export_to_pepagi.py                # export into ~/.pepagi/skills/
+    export_to_pepagi.py --dry-run      # print what would be written
+    export_to_pepagi.py --out-dir ./x  # write into ./x instead
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import re
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Dict, List, Optional
+
+# ─── Repo layout ────────────────────────────────────────────────
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+AGENTS_ROOT = REPO_ROOT / "foundation" / "agents"
+
+PACKS = [
+    ("shared", "_shared"),
+    ("foundation", "foundation"),
+    ("workforce", "workforce"),
+]
+
+SYNONYMS: Dict[str, List[str]] = {
+    "security-analyst": ["threat model", "security review"],
+    "performance-analyst": ["performance review", "perf audit"],
+    "test-strategist": ["test strategy", "test plan"],
+    "architect": ["architecture review", "system design"],
+    "requirements-engineer": ["requirements doc", "spec the project"],
+    "agent-generator": ["generate agent", "new agent"],
+    "agent-router": ["route agent", "which agent"],
+    "idea-refiner": ["refine idea", "brainstorm spec"],
+    "market-researcher": ["market research", "competitor analysis"],
+    "model-selector": ["pick model", "choose model"],
+    "output-validator": ["validate output", "validate docs"],
+    "stack-selector": ["pick stack", "choose tech stack"],
+    "workplan-builder": ["workplan", "build workplan"],
+    "doc-writer": ["write docs", "update docs"],
+    "gap-analyst": ["gap analysis", "audit gaps"],
+    "scanner": ["scan project", "project snapshot"],
+    "vision-keeper": ["vision doc", "product vision"],
+    "orchestrator": ["orchestrate", "next task"],
+}
+
+
+@dataclass
+class Agent:
+    raw_name: str
+    skill_name: str
+    description: str
+    tools: List[str]
+    model: str
+    pack: str
+    source_path: Path
+
+
+# ─── Frontmatter parsing ────────────────────────────────────────
+
+FRONTMATTER_RE = re.compile(r"^\ufeff?\s*---\r?\n(.*?)\r?\n---\s*(?:\r?\n|$)", re.DOTALL)
+KV_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_-]*)\s*:\s*(.*)$")
+
+
+def parse_frontmatter(raw: str) -> Optional[Dict[str, str]]:
+    match = FRONTMATTER_RE.match(raw)
+    if not match:
+        return None
+    body = match.group(1)
+    out: Dict[str, str] = {}
+    for line in body.splitlines():
+        kv = KV_RE.match(line)
+        if not kv:
+            continue
+        key, value = kv.group(1), kv.group(2).strip()
+        if len(value) >= 2 and (
+            (value.startswith('"') and value.endswith('"'))
+            or (value.startswith("'") and value.endswith("'"))
+        ):
+            value = value[1:-1]
+        if key in ("name", "description", "tools", "model"):
+            out[key] = value
+    return out
+
+
+def split_tools(tools: str) -> List[str]:
+    return [
+        t.strip()
+        for t in tools.split(",")
+        if t.strip() and not t.strip().startswith("<")
+    ]
+
+
+def derive_patterns(agent: Agent) -> List[str]:
+    patterns: List[str] = [agent.raw_name]
+    if "-" in agent.raw_name:
+        patterns.append(agent.raw_name.replace("-", " "))
+    for syn in SYNONYMS.get(agent.raw_name, []):
+        if syn not in patterns:
+            patterns.append(syn)
+        if len(patterns) >= 4:
+            break
+    return patterns[:4]
+
+
+# ─── Agent discovery ────────────────────────────────────────────
+
+def discover_agents() -> List[Agent]:
+    agents: List[Agent] = []
+    for pack, dir_name in PACKS:
+        pack_dir = AGENTS_ROOT / dir_name
+        if not pack_dir.is_dir():
+            continue
+        for md in sorted(pack_dir.glob("*.md")):
+            raw = md.read_text(encoding="utf-8")
+            fm = parse_frontmatter(raw)
+            if not fm or "name" not in fm or "description" not in fm:
+                print(f"skip: {md} (missing frontmatter)", file=sys.stderr)
+                continue
+            agents.append(
+                Agent(
+                    raw_name=fm["name"],
+                    skill_name=f"{pack}.{fm['name']}",
+                    description=fm["description"],
+                    tools=split_tools(fm.get("tools", "")),
+                    model=fm.get("model", "sonnet"),
+                    pack=pack,
+                    source_path=md,
+                )
+            )
+    return agents
+
+
+# ─── Skill file emission ────────────────────────────────────────
+
+SKILL_TEMPLATE = """\
+// Auto-generated by foundation/scripts/export_to_pepagi.py
+// Source: {source_rel}
+// Do NOT edit by hand — re-run the exporter to regenerate.
+
+const AGENT_NAME = {raw_name_js};
+const PACK = {pack_js};
+const DESCRIPTION = {description_js};
+const MODEL = {model_js};
+const TOOLS = {tools_js};
+const SOURCE_PATH = {source_js};
+
+export default {{
+  name: {skill_name_js},
+  description: DESCRIPTION,
+  version: "1.0.0",
+  author: "foundation",
+  triggerPatterns: {triggers_js},
+  tags: ["foundation", PACK],
+  requiredTools: [],
+  provenance: {{
+    createdBy: "manual",
+    verifiedBy: "human",
+  }},
+  async handler(ctx) {{
+    const slash = PACK === "workforce" ? "/workforce" : "/foundation";
+    const output =
+      "This is a Foundation planning agent (not a runtime skill).\\n" +
+      "To run it, open Claude Code in your project directory and type:\\n" +
+      "  /foundation   (if bootstrapping a new project)\\n" +
+      "  /workforce   (if auditing an existing project)\\n" +
+      "The '" + AGENT_NAME + "' agent will be spawned as part of the " + slash + " pipeline.\\n" +
+      "Its purpose: " + DESCRIPTION;
+    return {{
+      success: true,
+      output,
+      data: {{ agent: AGENT_NAME, pack: PACK, model: MODEL, tools: TOOLS, sourcePath: SOURCE_PATH }},
+    }};
+  }},
+}};
+"""
+
+
+def js_string(value: str) -> str:
+    # json.dumps produces a valid JS string literal for any unicode input.
+    import json as _json
+    return _json.dumps(value, ensure_ascii=False)
+
+
+def js_array(values: List[str]) -> str:
+    import json as _json
+    return _json.dumps(values, ensure_ascii=False)
+
+
+def render_skill(agent: Agent) -> str:
+    try:
+        source_rel = agent.source_path.relative_to(REPO_ROOT).as_posix()
+    except ValueError:
+        source_rel = agent.source_path.as_posix()
+    return SKILL_TEMPLATE.format(
+        source_rel=source_rel,
+        raw_name_js=js_string(agent.raw_name),
+        pack_js=js_string(agent.pack),
+        description_js=js_string(agent.description),
+        model_js=js_string(agent.model),
+        tools_js=js_array(agent.tools),
+        source_js=js_string(str(agent.source_path)),
+        skill_name_js=js_string(agent.skill_name),
+        triggers_js=js_array(derive_patterns(agent)),
+    )
+
+
+def safe_filename(skill_name: str) -> str:
+    slug = re.sub(r"[^A-Za-z0-9._-]+", "-", skill_name)
+    return f"foundation-{slug}.js"
+
+
+# ─── CLI ────────────────────────────────────────────────────────
+
+def default_out_dir() -> Path:
+    override = os.environ.get("PEPAGI_DATA_DIR")
+    base = Path(override) if override else Path.home() / ".pepagi"
+    return base / "skills"
+
+
+def main(argv: Optional[List[str]] = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Export Foundation agent markdown files as PEPAGI .js skill modules.",
+    )
+    parser.add_argument(
+        "--out-dir",
+        type=Path,
+        default=None,
+        help="Directory to write .js skill files into (default: ~/.pepagi/skills/).",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print what would be exported without writing any files.",
+    )
+    args = parser.parse_args(argv)
+
+    out_dir: Path = args.out_dir or default_out_dir()
+
+    agents = discover_agents()
+    if not agents:
+        print("No Foundation agents found under foundation/agents/.", file=sys.stderr)
+        return 1
+
+    if not args.dry_run:
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+    for agent in agents:
+        filename = safe_filename(agent.skill_name)
+        target = out_dir / filename
+        if args.dry_run:
+            print(f"would write {target}  ({agent.pack}/{agent.raw_name})")
+        else:
+            target.write_text(render_skill(agent), encoding="utf-8")
+
+    action = "would export" if args.dry_run else "exported"
+    print(f"{action} {len(agents)} Foundation agents -> {out_dir}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

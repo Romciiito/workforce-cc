@@ -1,0 +1,103 @@
+# {{ project_name }} — Design Decisions
+
+Read this doc before: proposing a change to the tech stack, questioning why something is built a certain way, or evaluating alternatives during a code review.
+
+---
+
+## Stack Selection
+
+**Chosen stack:** {{ stack }}
+
+### Why this stack
+
+[ Stack-selector agent fills this in. Format: 3–5 bullet points explaining the primary driver for each component. Example:
+
+- **FastAPI over Flask/Django** — async-first, Pydantic validation built-in, auto-generated OpenAPI spec with zero boilerplate.
+- **PostgreSQL over MySQL/SQLite** — pgvector for future embeddings, JSONB for flexible metadata, proven multi-tenant row isolation.
+- **Redis for cache + queue** — one dependency covers sessions, rate-limit counters, pub/sub fanout, and at-least-once job delivery.
+- **Next.js App Router** — server components reduce JS bundle; file-system routing is self-documenting.
+- **TanStack Query** — optimistic updates with rollback, background refetch, minimal boilerplate.
+]
+
+### Alternatives considered
+
+{% if stack == "python-fastapi" or stack == "python-fastapi-nextjs" or stack == "fullstack-desktop" %}
+| Alternative | Why rejected |
+|-------------|-------------|
+| Django REST Framework | Sync-first ORM fights async I/O; more opinions than needed for a greenfield API |
+| Flask + SQLAlchemy | Requires assembling 6+ micro-libraries for what FastAPI gives out of the box |
+| Node.js (Express/Hono) | Python required for AI/ML libraries (OpenAI SDK, embedding pipelines) |
+| Supabase / Firebase | Vendor lock-in; data sovereignty requirements; can't run offline |
+{% elif stack == "nextjs-fullstack" %}
+| Alternative | Why rejected |
+|-------------|-------------|
+| Create React App | No SSR, no file-based routing, deprecated upstream |
+| Remix | Smaller ecosystem; fewer examples for our component patterns |
+| SvelteKit | Team unfamiliar; migration cost outweighs benefits at current scale |
+| Vite + React (SPA only) | No SEO, no server components, all data fetching moves to client |
+{% elif stack == "python-cli" %}
+| Alternative | Why rejected |
+|-------------|-------------|
+| argparse | No automatic `--help` generation, no type coercion, verbose for subcommands |
+| Click alone | Typer wraps Click with type annotations — same power, less ceremony |
+| Shell scripts | Not cross-platform; no type safety; harder to test |
+{% elif stack == "fullstack-desktop" %}
+| Alternative | Why rejected |
+|-------------|-------------|
+| Electron | 2–3× larger bundle; Chromium bundled; higher memory floor |
+| Flutter Desktop | Dart ecosystem unfamiliar; limited access to native OS APIs |
+| Web-only (hosted) | Data sovereignty requirement; offline-first mandatory |
+{% else %}
+| Alternative | Why rejected |
+|-------------|-------------|
+| [ Fill in alternatives for stack: {{ stack }} ] | [ reason ] |
+{% endif %}
+
+---
+
+## Key Architecture Decisions
+
+### 1. Monorepo vs. polyrepo
+**Decision:** Monorepo (single repository for all components).
+**Rationale:** Atomic commits across backend + frontend + migrations. Simpler local dev setup. No cross-repo dependency version drift. Trade-off: slightly more complex CI matrix.
+
+### 2. Multi-tenancy model
+**Decision:** Shared database, org-scoped rows (`org_id` FK on every tenant-owned table).
+**Rationale:** Simpler operations (one schema to migrate), acceptable isolation for B2B SaaS. Rejected per-tenant schemas — too many schemas to manage at scale. Rejected separate databases — connection pool explosion.
+
+### 3. Auth pattern
+**Decision:** JWT access tokens (15 min) + httpOnly refresh token cookie (7 days) with JTI revocation via Redis.
+**Rationale:** Short-lived access tokens limit breach window without requiring per-request DB lookups. httpOnly cookie prevents XSS from stealing the refresh token. JTI blocklist in Redis enables instant logout without token expiry wait.
+
+### 4. ID strategy
+**Decision:** UUID v7 (time-ordered) for all primary keys.
+**Rationale:** UUID v7 is time-ordered, which gives better B-tree index locality than UUID v4 (avoids index fragmentation on inserts). Still globally unique with no central sequence. Safer to expose in URLs than sequential integers.
+
+### 5. Background job delivery
+**Decision:** At-least-once delivery via Redis Streams; all job handlers must be idempotent.
+**Rationale:** Redis Streams provide durable, consumer-group-based delivery with acknowledgment. "At-least-once" is simpler to implement correctly than "exactly-once"; idempotent handlers make duplicate delivery safe.
+
+---
+
+## Security Decisions
+
+### Why bcrypt (not Argon2)?
+bcrypt is widely understood, has stable library support across all our target languages, and cost-12 provides adequate hardening. Argon2id is theoretically superior but adds an external C dependency on some platforms. This decision is revisitable if requirements change.
+
+### Why not OAuth-only (passwordless)?
+OAuth requires users to have an identity provider account. Our target users may be in orgs that don't use Google/GitHub SSO. Username + password remains the lowest common denominator. OAuth can be layered on top later.
+
+### Why inline worker (not separate process)?
+Reduces operational complexity for v1. One process to monitor, one crash to handle. When throughput requires it, the worker can be split into a separate process — the Redis Streams architecture already supports it; it's a deployment-time decision, not a code change.
+
+---
+
+## Trade-offs Accepted
+
+| Trade-off | What we gave up | Why it's acceptable |
+|-----------|----------------|---------------------|
+| Shared DB multi-tenancy | Full data isolation between orgs | Acceptable for B2B SaaS; can migrate to separate schemas if compliance requires it |
+| At-least-once job delivery | Guaranteed exactly-once execution | All handlers are idempotent; simpler than distributed transactions |
+| JWT (not session cookies) | Stateless is harder to invalidate immediately | JTI blocklist in Redis closes the gap; 15-min TTL limits window |
+| Monorepo | Independent deploy cadence per service | Not needed at current team size; revisit at 5+ services |
+| No E2E encryption for stored data | Data at rest readable by server operators | Acceptable for B2B; customer-managed encryption is a roadmap item |

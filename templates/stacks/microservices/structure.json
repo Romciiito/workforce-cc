@@ -1,0 +1,25 @@
+{
+  "dirs": [
+    "services/auth/src",
+    "services/auth/tests",
+    "services/users/src",
+    "services/users/tests",
+    "services/notifications/src",
+    "services/notifications/tests",
+    "services/gateway",
+    "services/shared/models",
+    "services/shared/utils",
+    "infra/nginx",
+    "infra/postgres",
+    "infra/redis",
+    ".github/workflows"
+  ],
+  "files": {
+    "docker-compose.yml": "version: '3.9'\n\nservices:\n  postgres:\n    image: pgvector/pgvector:pg16\n    environment:\n      POSTGRES_USER: ${{{ env_prefix }}_DB_USER:-app}\n      POSTGRES_PASSWORD: ${{{ env_prefix }}_DB_PASSWORD:-dev}\n      POSTGRES_DB: ${{{ env_prefix }}_DB_NAME:-appdb}\n    ports: ['5432:5432']\n    volumes: ['postgres_data:/var/lib/postgresql/data']\n\n  redis:\n    image: redis:7-alpine\n    ports: ['6379:6379']\n\n  auth:\n    build: ./services/auth\n    depends_on: [postgres, redis]\n    ports: ['8001:8000']\n    environment:\n      DATABASE_URL: postgresql+asyncpg://app:dev@postgres:5432/appdb\n      REDIS_URL: redis://redis:6379\n\n  users:\n    build: ./services/users\n    depends_on: [postgres]\n    ports: ['8002:8000']\n\n  notifications:\n    build: ./services/notifications\n    depends_on: [redis]\n    ports: ['8003:8000']\n\n  gateway:\n    image: nginx:1.25-alpine\n    volumes:\n      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro\n    ports: ['80:80']\n    depends_on: [auth, users, notifications]\n\nvolumes:\n  postgres_data:\n",
+    "services/auth/src/main.py": "from fastapi import FastAPI\n\napp = FastAPI(title=\"Auth Service\")\n\n@app.get(\"/health\")\nasync def health():\n    return {\"status\": \"ok\", \"service\": \"auth\"}\n",
+    "services/users/src/main.py": "from fastapi import FastAPI\n\napp = FastAPI(title=\"Users Service\")\n\n@app.get(\"/health\")\nasync def health():\n    return {\"status\": \"ok\", \"service\": \"users\"}\n",
+    "services/notifications/src/main.py": "from fastapi import FastAPI\n\napp = FastAPI(title=\"Notifications Service\")\n\n@app.get(\"/health\")\nasync def health():\n    return {\"status\": \"ok\", \"service\": \"notifications\"}\n",
+    "infra/nginx/nginx.conf": "upstream auth { server auth:8000; }\nupstream users { server users:8000; }\nupstream notifications { server notifications:8000; }\n\nserver {\n    listen 80;\n\n    location /api/auth/ { proxy_pass http://auth/; }\n    location /api/users/ { proxy_pass http://users/; }\n    location /api/notifications/ { proxy_pass http://notifications/; }\n\n    location /health {\n        access_log off;\n        return 200 '{\"status\":\"ok\"}';\n        add_header Content-Type application/json;\n    }\n}\n",
+    ".env.example": "# Microservices environment variables\n# Prefix: {{ env_prefix }}_\n\n{{ env_prefix }}_DB_USER=app\n{{ env_prefix }}_DB_PASSWORD=changeme\n{{ env_prefix }}_DB_NAME=appdb\n{{ env_prefix }}_JWT_SECRET=changeme-32-char-min\n{{ env_prefix }}_REDIS_URL=redis://localhost:6379\n"
+  }
+}

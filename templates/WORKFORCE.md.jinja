@@ -1,0 +1,66 @@
+# WORKFORCE — {{ project_name }}
+
+> Project health record. Updated automatically on each Workforce run.
+> Do not edit manually — Workforce overwrites this on each run.
+
+---
+
+## Latest Run
+
+**Date:** {{ run_date }}
+**Triggered by:** {{ trigger }}
+
+### Health Scores
+
+| Dimension | Score | Status |
+|-----------|-------|--------|
+| Vision clarity | {{ scores.vision }}/10 | {{ scores.vision_status }} |
+| Documentation | {{ scores.docs }}/10 | {{ scores.docs_status }} |
+| Security baseline | {{ scores.security }}/10 | {{ scores.security_status }} |
+| Agent coverage | {{ scores.agents }}/10 | {{ scores.agents_status }} |
+| Workplan freshness | {{ scores.workplan }}/10 | {{ scores.workplan_status }} |
+| **Overall** | **{{ scores.total }}/50** | |
+
+### Agents Spawned
+
+{% for agent in agents_spawned %}
+- {{ agent.name }} — {{ agent.outcome }}
+{% endfor %}
+
+### Docs Created
+
+{% for doc in docs_created %}
+- `{{ doc }}`
+{% endfor %}
+
+### Docs Flagged (stale — update needed)
+
+{% for doc in docs_flagged %}
+- `{{ doc }}`
+{% endfor %}
+
+---
+
+## Open Items
+
+These were flagged but not resolved in this run. Address before next major phase.
+
+{% for item in open_items %}
+- [ ] {{ item }}
+{% endfor %}
+
+---
+
+## Recommended Next Run
+
+{{ next_run_recommendation }}
+
+*Suggested trigger: after {{ next_run_trigger }} commits OR when starting a new workplan phase.*
+
+---
+
+## Run History
+
+| Date | Overall | Agents | Key finding |
+|------|---------|--------|-------------|
+| {{ run_date }} | {{ scores.total }}/50 | {{ agents_spawned | length }} | {{ key_finding }} |

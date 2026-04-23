@@ -1,0 +1,19 @@
+{
+  "dirs": [
+    "src/core",
+    "tests",
+    ".github/workflows"
+  ],
+  "files": {
+    "src/__init__.py": "",
+    "src/core/__init__.py": "",
+    "tests/__init__.py": "",
+    "src/core/config.py": "from pydantic_settings import BaseSettings\nfrom pathlib import Path\n\n\nclass Settings(BaseSettings):\n    environment: str = \"development\"\n    log_level: str = \"info\"\n    data_dir: Path = Path.home() / \".{{ project_name | lower | replace(' ', '-') }}\"\n\n    class Config:\n        env_prefix = \"APP_\"\n        env_file = \".env\"\n\n\nsettings = Settings()\n",
+    "src/core/logging.py": "import structlog\nfrom src.core.config import settings\n\nstructlog.configure(\n    processors=[\n        structlog.contextvars.merge_contextvars,\n        structlog.processors.add_log_level,\n        structlog.processors.TimeStamper(fmt=\"iso\"),\n        structlog.dev.ConsoleRenderer() if settings.environment == \"development\"\n        else structlog.processors.JSONRenderer(),\n    ]\n)\n\nlogger = structlog.get_logger()\n",
+    "src/cli.py": "import typer\nfrom typing import Optional\nfrom rich.console import Console\nfrom rich.table import Table\n\napp = typer.Typer(\n    name=\"{{ project_name | lower | replace(' ', '-') }}\",\n    help=\"{{ description }}\",\n    add_completion=False,\n)\nconsole = Console()\n\n\n@app.callback()\ndef main(\n    verbose: bool = typer.Option(False, \"--verbose\", \"-v\", help=\"Enable verbose output\"),\n) -> None:\n    \"\"\"{{ description }}\"\"\"\n    if verbose:\n        import os\n        os.environ[\"APP_LOG_LEVEL\"] = \"debug\"\n\n\n@app.command()\ndef run(\n    input_file: Optional[str] = typer.Argument(None, help=\"Input file path\"),\n    output: str = typer.Option(\"stdout\", \"--output\", \"-o\", help=\"Output destination\"),\n) -> None:\n    \"\"\"Run the main command.\"\"\"\n    console.print(f\"Running with input={input_file}, output={output}\")\n    # TODO: implement\n\n\n@app.command()\ndef version() -> None:\n    \"\"\"Print the version and exit.\"\"\"\n    from importlib.metadata import version as pkg_version\n    try:\n        v = pkg_version(\"{{ project_name | lower | replace(' ', '-') }}\")\n    except Exception:\n        v = \"0.1.0-dev\"\n    console.print(v)\n\n\nif __name__ == \"__main__\":\n    app()\n",
+    "tests/test_cli.py": "from typer.testing import CliRunner\nfrom src.cli import app\n\nrunner = CliRunner()\n\n\ndef test_help() -> None:\n    result = runner.invoke(app, [\"--help\"])\n    assert result.exit_code == 0\n    assert \"{{ description }}\" in result.output or \"Usage\" in result.output\n\n\ndef test_version() -> None:\n    result = runner.invoke(app, [\"version\"])\n    assert result.exit_code == 0\n\n\ndef test_run_no_args() -> None:\n    result = runner.invoke(app, [\"run\"])\n    # Should not crash with no input file\n    assert result.exit_code == 0\n",
+    "pyproject.toml": "[project]\nname = \"{{ project_name | lower | replace(' ', '-') }}\"\nversion = \"0.1.0\"\nrequires-python = \">=3.12\"\ndescription = \"{{ description }}\"\ndependencies = [\n    \"typer>=0.12\",\n    \"click>=8.1\",\n    \"rich>=13.0\",\n    \"pydantic-settings>=2.0\",\n    \"structlog>=24.0\",\n]\n\n[project.scripts]\n{{ project_name | lower | replace(' ', '-') }} = \"src.cli:app\"\n\n[project.optional-dependencies]\ndev = [\n    \"pytest>=8.0\",\n    \"pytest-cov>=5.0\",\n]\n\n[build-system]\nrequires = [\"hatchling\"]\nbuild-backend = \"hatchling.build\"\n\n[tool.hatch.build.targets.wheel]\npackages = [\"src\"]\n\n[tool.pytest.ini_options]\ntestpaths = [\"tests\"]\n",
+    ".env.example": "APP_ENVIRONMENT=development\nAPP_LOG_LEVEL=info\n# APP_DATA_DIR=~/.{{ project_name | lower | replace(' ', '-') }}\n",
+    ".gitignore": ".env\n__pycache__/\n*.pyc\n.pytest_cache/\n.coverage\nhtmlcov/\ndist/\nbuild/\n*.egg-info/\n.venv/\n.DS_Store\n*.log\n"
+  }
+}

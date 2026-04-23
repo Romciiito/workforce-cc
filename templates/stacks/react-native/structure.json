@@ -1,0 +1,28 @@
+{
+  "dirs": [
+    "mobile/src/screens",
+    "mobile/src/components",
+    "mobile/src/navigation",
+    "mobile/src/hooks",
+    "mobile/src/stores",
+    "mobile/src/services",
+    "mobile/assets",
+    "backend/src/api/routes",
+    "backend/src/api/middleware",
+    "backend/src/database/models",
+    "backend/src/database/repos",
+    "backend/src/core",
+    "backend/alembic/versions",
+    "backend/tests",
+    "shared/types",
+    ".github/workflows"
+  ],
+  "files": {
+    "mobile/app.json": "{\n  \"expo\": {\n    \"name\": \"{{ project_name }}\",\n    \"slug\": \"{{ project_name | lower | replace(' ', '-') }}\",\n    \"version\": \"1.0.0\",\n    \"platforms\": [\"ios\", \"android\"],\n    \"newArchEnabled\": true\n  }\n}\n",
+    "mobile/package.json": "{\n  \"name\": \"{{ project_name | lower | replace(' ', '-') }}-mobile\",\n  \"version\": \"1.0.0\",\n  \"main\": \"expo-router/entry\",\n  \"scripts\": {\n    \"start\": \"expo start\",\n    \"android\": \"expo start --android\",\n    \"ios\": \"expo start --ios\",\n    \"test\": \"jest\",\n    \"lint\": \"eslint . --ext .ts,.tsx\"\n  },\n  \"dependencies\": {\n    \"expo\": \"~52.0.0\",\n    \"expo-router\": \"~4.0.0\",\n    \"react\": \"18.3.2\",\n    \"react-native\": \"0.76.5\",\n    \"@tanstack/react-query\": \"^5.0.0\",\n    \"zustand\": \"^5.0.0\",\n    \"axios\": \"^1.7.0\"\n  },\n  \"devDependencies\": {\n    \"typescript\": \"~5.3.0\",\n    \"@types/react\": \"~18.3.0\",\n    \"@types/react-native\": \"~0.73.0\",\n    \"eslint\": \"^8.0.0\"\n  }\n}\n",
+    "mobile/src/services/api.ts": "import axios from 'axios';\n\n// Backend API base URL — set via expo-constants or .env\nconst BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000';\n\nexport const api = axios.create({\n  baseURL: BASE_URL,\n  timeout: 10000,\n});\n",
+    "backend/src/api/routes/mobile_auth.py": "\"\"\"Mobile-specific auth routes (device token registration).\"\"\"\nfrom fastapi import APIRouter\n\nrouter = APIRouter(prefix=\"/mobile\", tags=[\"mobile-auth\"])\n\n@router.post(\"/device-token\")\nasync def register_device_token():\n    # TODO: implement device token registration for push notifications\n    raise NotImplementedError\n",
+    "shared/types/index.ts": "// Shared TypeScript types used by mobile app and any web frontend\n\nexport interface User {\n  id: string;\n  email: string;\n  name: string;\n  createdAt: string;\n}\n",
+    ".env.example": "# React Native + FastAPI environment variables\n# Prefix: {{ env_prefix }}_\n\n# Backend\n{{ env_prefix }}_DATABASE_URL=postgresql+asyncpg://app:dev@localhost:5432/appdb\n{{ env_prefix }}_REDIS_URL=redis://localhost:6379\n{{ env_prefix }}_JWT_SECRET=changeme-32-char-min\n\n# Mobile (Expo public vars)\nEXPO_PUBLIC_API_URL=http://localhost:8000\n"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "dirs": [
+    "src/api/routes",
+    "src/core",
+    "src/database/models",
+    "src/database/repos",
+    "tests/unit",
+    "tests/integration",
+    ".github/workflows"
+  ],
+  "files": {
+    "src/__init__.py": "",
+    "src/api/__init__.py": "",
+    "src/api/routes/__init__.py": "",
+    "src/core/__init__.py": "",
+    "src/database/__init__.py": "",
+    "src/database/models/__init__.py": "",
+    "src/database/repos/__init__.py": "",
+    "tests/__init__.py": "",
+    "tests/unit/__init__.py": "",
+    "tests/integration/__init__.py": "",
+    "src/core/config.py": "# Config using pydantic-settings\nfrom pydantic_settings import BaseSettings\n\n\nclass Settings(BaseSettings):\n    database_url: str = \"postgresql+asyncpg://localhost/app\"\n    redis_url: str = \"redis://localhost:6379\"\n    jwt_secret: str = \"change-me\"\n    environment: str = \"development\"\n    log_level: str = \"info\"\n\n    class Config:\n        env_prefix = \"APP_\"\n        env_file = \".env\"\n\n\nsettings = Settings()\n",
+    "src/core/logging.py": "import structlog\n\nstructlog.configure(\n    processors=[\n        structlog.contextvars.merge_contextvars,\n        structlog.processors.add_log_level,\n        structlog.processors.TimeStamper(fmt=\"iso\"),\n        structlog.processors.JSONRenderer(),\n    ]\n)\n\nlogger = structlog.get_logger()\n",
+    "src/api/main.py": "from fastapi import FastAPI\nfrom fastapi.middleware.cors import CORSMiddleware\nfrom src.core.config import settings\n\napp = FastAPI(title=\"{{ project_name }}\", version=\"0.1.0\")\n\napp.add_middleware(\n    CORSMiddleware,\n    allow_origins=settings.cors_origins if hasattr(settings, \"cors_origins\") else [\"http://localhost:3000\"],\n    allow_credentials=True,\n    allow_methods=[\"*\"],\n    allow_headers=[\"*\"],\n)\n\n\n@app.get(\"/health\")\nasync def health() -> dict:\n    return {\"status\": \"ok\"}\n",
+    "tests/conftest.py": "import pytest\nfrom httpx import AsyncClient, ASGITransport\nfrom src.api.main import app\n\n\n@pytest.fixture\nasync def client() -> AsyncClient:\n    async with AsyncClient(transport=ASGITransport(app=app), base_url=\"http://test\") as ac:\n        yield ac\n",
+    "pyproject.toml": "[project]\nname = \"{{ project_name }}\"\nversion = \"0.1.0\"\nrequires-python = \">=3.12\"\ndependencies = [\n    \"fastapi>=0.115\",\n    \"uvicorn[standard]>=0.30\",\n    \"sqlalchemy[asyncio]>=2.0\",\n    \"alembic>=1.13\",\n    \"asyncpg>=0.29\",\n    \"pydantic-settings>=2.0\",\n    \"structlog>=24.0\",\n    \"python-jose[cryptography]>=3.3\",\n    \"passlib[bcrypt]>=1.7\",\n    \"redis[hiredis]>=5.0\",\n]\n\n[project.optional-dependencies]\ndev = [\n    \"pytest>=8.0\",\n    \"pytest-asyncio>=0.23\",\n    \"httpx>=0.27\",\n    \"pytest-cov>=5.0\",\n]\n\n[tool.pytest.ini_options]\nasyncio_mode = \"auto\"\n",
+    ".env.example": "APP_DATABASE_URL=postgresql+asyncpg://user:pass@localhost/dbname\nAPP_REDIS_URL=redis://localhost:6379\nAPP_JWT_SECRET=generate-with-openssl-rand-hex-32\nAPP_ENVIRONMENT=development\nAPP_LOG_LEVEL=info\nAPP_CORS_ORIGINS=http://localhost:3000\n",
+    ".gitignore": ".env\n__pycache__/\n*.pyc\n.pytest_cache/\n.coverage\nhtmlcov/\ndist/\nbuild/\n*.egg-info/\n.venv/\n",
+    "alembic.ini": "[alembic]\nscript_location = alembic\nprepend_sys_path = .\nsqlalchemy.url = postgresql+asyncpg://user:pass@localhost/dbname\n\n[loggers]\nkeys = root,sqlalchemy,alembic\n\n[handlers]\nkeys = console\n\n[formatters]\nkeys = generic\n"
+  }
+}

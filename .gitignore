@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+*.pyo
+.DS_Store
+Thumbs.db
+*.egg-info/
+dist/
+build/
+.env
+
+# Foundation/Workforce runtime artifacts
+.foundation-memory/
+.tmp/
+*.log
+
+# Claude Code per-user settings — never committed
+.claude/settings.local.json
