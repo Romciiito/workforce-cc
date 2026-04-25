@@ -29,6 +29,8 @@ Do NOT trigger on new greenfield projects — those use `/foundation`.
 
 Execute phases in order. Each phase must complete before the next begins.
 
+The pipeline now flows through the shared backbone described in [`skills/_backbone/BACKBONE.md`](../_backbone/BACKBONE.md). Phase 0 (scan) runs first because the audit has nothing without it. Phase 0.5 (intent validation) runs **conditionally** when the user's request is vague. Phase 4 (alignment-guard) is a final drift check before WORKFORCE.md is written.
+
 ---
 
 ### PHASE 0 — SCAN
@@ -42,6 +44,32 @@ Spawn: scanner
 ```
 
 Wait for `project-snapshot.md` to exist before proceeding.
+
+---
+
+### PHASE 0.5 — INTENT VALIDATION (conditional)
+
+**Run this phase only when the user's request is vague.** A request like "audit my project" or "check if we're on track" needs intent before the orchestrator scores anything. A request like "is `auth.py:foo` covered by tests?" already has a concrete answerable question — skip this phase and let the orchestrator run.
+
+**Trigger heuristic** — run intent-validator when **all** of the following are true:
+
+1. The user's prompt does not name a specific file, function, or feature.
+2. There is no `.workforce/intent.md` younger than 14 days.
+3. There is no `vision.md` younger than 30 days, OR the most recent commits diverge significantly from `vision.md`.
+
+When triggered, spawn:
+
+```
+Spawn: intent-validator
+  Reads:  user prompt, project-snapshot.md, vision.md (if exists),
+          CLAUDE.md (if exists), README.md (if exists)
+  Output: .workforce/intent.md
+  Mode:   B (revision) if vision.md exists; A (greenfield) otherwise
+```
+
+Wait for `.workforce/intent.md` to exist before proceeding to Phase 1. The intent file gives the workforce-orchestrator a falsifiable goal to score against, instead of guessing what "audit" means for this user.
+
+If the trigger heuristic does not fire (request is concrete), skip this phase and proceed to Phase 1 directly.
 
 ---
 
@@ -137,6 +165,29 @@ Spawn: agent-generator  (prompt: "mode=diff")
 
 ---
 
+### PHASE 4.5 — ALIGNMENT GUARD (vision)
+
+**Run this phase only when Phase 0.5 produced an `intent.md`** (or when one was already current). Without `intent.md`, alignment-guard has nothing to check against — the audit is a maintenance pass, not an alignment check.
+
+```
+Spawn: alignment-guard --mode=vision
+  Reads:  .workforce/intent.md (required for this phase),
+          vision.md (if exists), spec.md (if exists),
+          architecture.md (if exists), workplan.md (if exists),
+          decisions.md (last 20 entries), project-snapshot.md
+  Output: .workforce/alignment-report.md
+```
+
+The agent returns one of three statuses:
+
+- **PASS** — proceed to Phase 5; record clean alignment in WORKFORCE.md.
+- **PASS-WITH-NOTES** — proceed to Phase 5 but list findings in WORKFORCE.md as open items.
+- **BLOCK** — surface required actions to the user. The user decides whether to re-dispatch upstream agents (e.g. re-run gap-analyst or doc-writer with corrections) or accept the gap and proceed.
+
+This is a non-mutating gate — the audit pipeline does not auto-revert work because alignment-guard returned BLOCK. It surfaces drift; the human decides.
+
+---
+
 ### PHASE 5 — HEALTH RECORD UPDATE
 
 Update (or create) `WORKFORCE.md` at the project root with this run's results:
@@ -157,3 +208,6 @@ Update (or create) `WORKFORCE.md` at the project root with this run's results:
 - If the user says "vision only" — run only vision-keeper, then update WORKFORCE.md
 - If `project-snapshot.md` already exists and was written in the last 10 minutes, skip Phase 0 (already fresh)
 - Foundation agents (idea-refiner, market-researcher, stack-selector) are never spawned by Workforce
+- **Phase 0.5 (intent-validator) is conditional** — fire only when the request is vague AND no current `intent.md`/`vision.md` exists. Concrete requests skip this phase.
+- **Phase 4.5 (alignment-guard) runs only when `intent.md` exists** — without it, drift has no anchor.
+- Use `scripts/workforce_paths.py write-path <name>` for `intent.md`, `dispatch.md`, `integration.md`, `alignment-report.md` — never hardcode `.workforce/` paths
