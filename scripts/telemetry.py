@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -44,9 +45,19 @@ def main() -> None:
     root = Path(args.project_dir).resolve()
     mem_dir = root / ".foundation-memory"
 
-    # Opt-in: silently no-op if not enabled
-    if not mem_dir.exists():
+    # Opt-in by default — silently no-op if .foundation-memory/ is absent.
+    # Auto-enable when the conductor (or any caller) sets WORKFORCE_MULTI_TERMINAL=1.
+    # Multi-terminal runs require an audit trail: without it, the operator
+    # cannot reconstruct what each engineer did when they're scattered across
+    # different tmux windows. Hard opt-out via WORKFORCE_TELEMETRY=off.
+    opt_out = os.environ.get("WORKFORCE_TELEMETRY", "").lower() == "off"
+    if opt_out:
         sys.exit(0)
+    auto_enable = os.environ.get("WORKFORCE_MULTI_TERMINAL", "") == "1"
+    if not mem_dir.exists():
+        if not auto_enable:
+            sys.exit(0)
+        mem_dir.mkdir(parents=True, exist_ok=True)
 
     record = {
         "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
