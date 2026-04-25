@@ -283,13 +283,45 @@ Disable per-hook at runtime: `WORKFORCE_DISABLED_HOOKS=governance,config-protect
 ## Tests
 
 ```bash
-pip install pytest jinja2
+make install-dev       # pip install -e ".[test]"
+make test              # python -m pytest
+```
+
+Or manually:
+
+```bash
+pip install -e ".[test]"
 pytest
 ```
 
 CI (`.github/workflows/test.yml`) runs the suite on Python 3.11/3.12/3.13 + a shellcheck pass on every push and pull request. `link-check.yml` runs lychee on all `.md` files weekly.
 
 See [tests/README.md](tests/README.md) for what each test file covers.
+
+## Make targets
+
+A [`Makefile`](Makefile) wraps the common operations. Run `make help` to see all targets. Highlights:
+
+```bash
+make install              # ./install.sh — claude only, default profile
+make install-all          # all five harnesses
+make install-minimal      # just /sync, no agents/hooks
+make install-dry-run      # preview without writing
+make uninstall
+
+make test                 # full pytest suite
+make lint                 # bash + python smoke checks (+ shellcheck if installed)
+make status               # repo + beacons + test count
+
+make catalog-validate     # check catalogs/ index ↔ bodies + license gate
+make catalog-sync ECC_PATH=/path/to/upstream-clone
+make mcp-list             # list MCP servers in catalogs/mcp/
+
+make harness-apply        # re-apply ~/.workforce-harnesses adapters here
+make harness-apply-all    # apply all five harnesses to current project
+
+make clean                # .pytest_cache, __pycache__, .tmp/, *.egg-info
+```
 
 ---
 
