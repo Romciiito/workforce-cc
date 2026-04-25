@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "workforce-cc"
+version = "0.1.0"
+description = "Agentic workflows for Claude Code (and four other harnesses): six slash commands sharing a Validator → Conductor → Alignment Guard pipeline."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+authors = [
+    { name = "workforce-cc contributors" },
+]
+keywords = ["claude-code", "agents", "ai-coding", "orchestration", "multi-terminal"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development",
+]
+dependencies = [
+    # Runtime deps for the helper scripts under scripts/.
+    # Jinja2 is required by scaffold.py + harness_install.py for template rendering.
+    "Jinja2>=3.1",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0",
+    # Tests don't need anything else — the suite avoids fixtures that would
+    # require richer dependencies (no pytest-asyncio, no faker, no factories).
+]
+dev = [
+    "workforce-cc[test]",
+    # Linting / formatting choices are deferred to the operator. Add them here
+    # when a project decides on its style: "ruff>=0.5", "mypy>=1.10", etc.
+]
+
+[project.urls]
+Homepage = "https://github.com/Romciiito/workforce-cc"
+Issues = "https://github.com/Romciiito/workforce-cc/issues"
+Documentation = "https://github.com/Romciiito/workforce-cc/blob/main/README.md"
+
+# This project ships as a script set + skill catalog rather than an importable
+# Python package. The 'packages = []' below tells setuptools not to look for
+# Python packages — pip-installing this repo gives you the metadata + the
+# dev dependencies, but the actual functionality is invoked via:
+#   1. install.sh (writes skills/agents/hooks into ~/.claude/)
+#   2. scripts/<name>.py (called directly with python3)
+#
+# A future chunk could expose scripts/ as console_scripts entry points
+# (e.g. `workforce-pipeline-runner` instead of `python3 scripts/pipeline_runner.py`)
+# but that's not required today.
+[tool.setuptools]
+packages = []
+
+# Pytest configuration. Mirrors pytest.ini so the project works from either.
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+filterwarnings = [
+    "error",
+    "ignore::DeprecationWarning:jinja2.*",
+]
