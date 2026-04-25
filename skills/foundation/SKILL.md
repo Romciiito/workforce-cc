@@ -220,6 +220,39 @@ For each skill the user selects, run:
 python3 "$FOUNDATION_ROOT/scripts/install_skill.py" --skill <skill-name>
 ```
 
+### Phase 2.5 — MCP server suggestions
+
+After skill installs settle, run the MCP catalog query to surface MCP servers that match the chosen stack:
+
+```bash
+python3 "$FOUNDATION_ROOT/scripts/mcp_query.py" list --stack <selected_stack>
+```
+
+Present the result to the user:
+
+```
+Based on your stack (<stack>), here are recommended MCP servers from the catalog:
+
+  github            (vcs)        Read GitHub repos, issues, PRs, and Actions runs.
+  postgres          (database)   Query a PostgreSQL database read-only.
+  fetch             (web)        Fetch a URL and parse to text/markdown.
+  ...
+
+Add any to .claude/settings.local.json? (Enter ids separated by commas, or press Enter to skip)
+```
+
+For each server the user selects, run:
+
+```bash
+python3 "$FOUNDATION_ROOT/scripts/mcp_query.py" emit <server-id> \
+  --apply --project-dir . \
+  --placeholders KEY=VALUE [KEY=VALUE...]
+```
+
+`--placeholders` resolves any `${VAR_NAME}` in the server's `env` block (e.g. `--placeholders GITHUB_TOKEN=ghp_...`). The user provides real values; the script merges the configuration into `.claude/settings.local.json`'s `mcpServers` map without overwriting existing entries.
+
+If the user skips, do nothing. The MCP catalog is fully optional — projects work fine without any MCP servers configured.
+
 ---
 
 ## PHASE 3 — SCAFFOLD GENERATION
