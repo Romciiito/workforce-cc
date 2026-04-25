@@ -297,6 +297,36 @@ If `integration.md` lists `Next dispatch` items, the conductor may be re-invoked
 
 ---
 
+## Governance
+
+After each major sub-mode action, fire the governance hook so the decision is recorded:
+
+```bash
+# After writing dispatch.md:
+~/.foundation-path/hooks/dispatcher.sh fire governance \
+  conductor dispatch "wave 1: <N> engineers"
+
+# After writing integration.md:
+~/.foundation-path/hooks/dispatcher.sh fire governance \
+  conductor integrate "<N> artifacts produced, <M> cross-cuts found"
+
+# When you decide a retry tier in monitor mode:
+~/.foundation-path/hooks/dispatcher.sh fire governance \
+  conductor retry "<engineer> tier=narrow|broad|fresh"
+```
+
+The dispatcher silently no-ops if the active profile doesn't include the governance hook. Safe to call unconditionally.
+
+## Catalog allowlist (engineer pool extension)
+
+When deciding which engineers to spawn, also consider entries the project has enabled in its catalog allowlist:
+
+```bash
+python3 ~/.foundation-path/scripts/catalog_query.py enabled --project-dir .
+```
+
+Returns a list of `ecc.agent.<name>` (or other catalog) ids that the user has explicitly enabled. Engineer agents in the catalog can be spawned the same way as built-in pool members; their bodies live under `~/.foundation-path/catalogs/<source>/bodies/`. The catalog is **additive** to the built-in pool, never a replacement.
+
 ## Rules
 
 - The Conductor never writes engineer deliverables. Always spawn an engineer.
@@ -305,3 +335,5 @@ If `integration.md` lists `Next dispatch` items, the conductor may be re-invoked
 - BLOCKED engineers do not auto-retry. The user decides.
 - Maximum 3 convergence iterations per run.
 - Use `scripts/workforce_paths.py write-path <name>` for canonical write locations — never hardcode `.workforce/` paths.
+- Fire `hooks/dispatcher.sh fire governance ...` after dispatch / integrate / retry decisions.
+- Catalog entries are additive. Built-in engineer pool always available regardless of allowlist.

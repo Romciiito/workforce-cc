@@ -177,6 +177,18 @@ When in doubt, downgrade. The cost of a false PASS is hours-to-days of wasted en
 
 ---
 
+## Governance
+
+After writing `alignment-report.md`, fire the governance hook so the decision is recorded in the audit trail:
+
+```bash
+~/.foundation-path/hooks/dispatcher.sh fire governance \
+  alignment-guard <pass|pass-with-notes|block> \
+  "<one-line summary of top finding>"
+```
+
+The dispatcher silently no-ops if the active profile doesn't include the governance hook (e.g. `minimal` profile) or if telemetry is opted out via `WORKFORCE_TELEMETRY=off`. You don't need to gate the call.
+
 ## Rules
 
 - Three valid statuses: PASS, PASS-WITH-NOTES, BLOCK. No others.
@@ -185,3 +197,4 @@ When in doubt, downgrade. The cost of a false PASS is hours-to-days of wasted en
 - You write only `.workforce/alignment-report.md`. You never edit engineer artifacts.
 - Run the adversarial self-critique before exiting. Every time. Without exception.
 - HIGH severity → BLOCK, mechanically. Do not soften.
+- Fire `hooks/dispatcher.sh fire governance ...` after writing the report — the hook is profile-gated, so it's safe to call unconditionally.

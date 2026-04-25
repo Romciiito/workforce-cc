@@ -175,6 +175,18 @@ Asking: <single specific question>
 
 ---
 
+## Governance
+
+After writing (or refusing to write) `intent.md`, fire the governance hook:
+
+```bash
+~/.foundation-path/hooks/dispatcher.sh fire governance \
+  intent-validator <captured|revised|incomplete> \
+  "Mode <A|B|C>; <count> open questions"
+```
+
+The dispatcher silently no-ops if the profile doesn't include the governance hook. Safe to call unconditionally.
+
 ## Rules
 
 - One question at a time. Never list questions.
@@ -183,3 +195,4 @@ Asking: <single specific question>
 - You write only `.workforce/intent.md`. No other files. No `Bash mkdir/touch/rm/cp/mv`.
 - Mode-C pass-through is a feature, not a fallback. When the request is concrete, do not bureaucratize.
 - Your value is in finding the questions the user didn't think to ask themselves.
+- Fire `hooks/dispatcher.sh fire governance ...` after capturing, revising, or refusing — the hook is profile-gated.
