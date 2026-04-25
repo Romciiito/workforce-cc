@@ -295,7 +295,58 @@ def main() -> None:
     # .claude/settings.local.json
     write_settings(project_dir, args.stack)
 
+    # Harness adapters: apply each harness in ~/.workforce-harnesses to this
+    # project. The beacon is written by install.sh; if missing, default to
+    # claude-only (legacy behavior).
+    apply_harness_adapters(project_dir, foundation_root, ctx)
+
     print(f"\nScaffold complete. Review workplan.md and fill in .env values.\n")
+
+
+def apply_harness_adapters(project_dir: Path, foundation_root: Path, ctx: dict) -> None:
+    """Apply every harness listed in ~/.workforce-harnesses to the project.
+
+    Reads the beacon written by install.sh and invokes scripts/harness_install.py
+    once per harness. Silently no-ops for the 'claude' adapter when its outputs
+    already match what scaffold.py wrote (CLAUDE.md is shared territory).
+    """
+    import os
+    import subprocess as _sp
+
+    beacon = Path(os.environ.get("HOME", "")) / ".workforce-harnesses"
+    if beacon.exists():
+        harnesses = [h.strip() for h in beacon.read_text().strip().split(",") if h.strip()]
+    else:
+        harnesses = ["claude"]
+
+    # Skip claude in this loop — scaffold already wrote CLAUDE.md and
+    # .claude/agents/ above. Other harnesses are additive adapter files.
+    extras = [h for h in harnesses if h != "claude"]
+    if not extras:
+        return
+
+    harness_install = foundation_root / "scripts" / "harness_install.py"
+    if not harness_install.exists():
+        print(f"  WARNING: harness_install.py missing at {harness_install}; skipping non-claude harnesses")
+        return
+
+    print(f"\nHarness adapters: {', '.join(extras)}")
+    for h in extras:
+        try:
+            _sp.run(
+                [
+                    sys.executable, str(harness_install),
+                    "--harness", h,
+                    "--project-dir", str(project_dir),
+                    "--project-name", str(ctx.get("project_name", "")),
+                    "--stack", str(ctx.get("stack", "")),
+                    "--description", str(ctx.get("description", "")),
+                    "--critical-rules", str(ctx.get("critical_rules", "")),
+                ],
+                check=True,
+            )
+        except _sp.CalledProcessError as e:
+            print(f"  WARNING: harness '{h}' adapter failed: {e}")
 
 
 if __name__ == "__main__":
