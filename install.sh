@@ -253,9 +253,9 @@ if [[ -n "$PROFILE" ]]; then
   read -r -a EFFECTIVE_PACKS <<< "$PROFILE_PACKS"
 else
   case "$MODE" in
-    foundation) EFFECTIVE_SKILLS=(foundation sync perf) ;;
-    workforce)  EFFECTIVE_SKILLS=(workforce sync perf) ;;
-    both)       EFFECTIVE_SKILLS=(foundation workforce sync perf) ;;
+    foundation) EFFECTIVE_SKILLS=(foundation sync perf harness) ;;
+    workforce)  EFFECTIVE_SKILLS=(workforce sync perf harness) ;;
+    both)       EFFECTIVE_SKILLS=(foundation workforce sync perf harness) ;;
     *) echo "Unknown --only value: $MODE"; exit 1 ;;
   esac
   # Legacy mode behavior (pre-profile): always install _shared + orchestrators,
@@ -358,6 +358,7 @@ else
   echo "  /workforce    — audit an existing project"
   echo "  /sync         — (if available) quick health check"
   echo "  /perf         — (if available) performance diagnosis"
+  echo "  /harness      — (if available) re-apply harness adapters"
   echo ""
   echo "  Beacon:  ~/.foundation-path     → $ROOT_DIR"
   echo "  Beacon:  ~/.workforce-harnesses → $(echo "$EFFECTIVE_HARNESSES_STR" | tr ' ' ',')"

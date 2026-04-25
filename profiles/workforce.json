@@ -2,7 +2,7 @@
   "$schema": "./schema.json",
   "name": "workforce",
   "description": "Existing-project audit only. Workforce skill, sync, shared + orchestrator agents, workforce pack. No foundation-specific agents.",
-  "skills": ["workforce", "sync", "perf"],
+  "skills": ["workforce", "sync", "perf", "harness"],
   "agent_packs": ["_shared", "orchestrators", "workforce"],
   "hooks": ["governance"],
   "harnesses": ["claude"]
