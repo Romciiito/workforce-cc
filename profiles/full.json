@@ -1,0 +1,8 @@
+{
+  "$schema": "./schema.json",
+  "name": "full",
+  "description": "Everything: both skills, both packs, all shared + orchestrator agents, all hooks. Equivalent to the legacy 'both' mode and the default for install.sh.",
+  "skills": ["foundation", "workforce", "sync"],
+  "agent_packs": ["_shared", "orchestrators", "foundation", "workforce"],
+  "hooks": ["governance", "config-protection"]
+}

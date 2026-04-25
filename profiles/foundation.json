@@ -1,0 +1,8 @@
+{
+  "$schema": "./schema.json",
+  "name": "foundation",
+  "description": "Greenfield bootstrap only. Foundation skill, sync, shared + orchestrator agents, foundation pack. No workforce-specific agents.",
+  "skills": ["foundation", "sync"],
+  "agent_packs": ["_shared", "orchestrators", "foundation"],
+  "hooks": ["governance"]
+}

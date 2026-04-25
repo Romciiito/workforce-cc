@@ -1,0 +1,8 @@
+{
+  "$schema": "./schema.json",
+  "name": "workforce",
+  "description": "Existing-project audit only. Workforce skill, sync, shared + orchestrator agents, workforce pack. No foundation-specific agents.",
+  "skills": ["workforce", "sync"],
+  "agent_packs": ["_shared", "orchestrators", "workforce"],
+  "hooks": ["governance"]
+}

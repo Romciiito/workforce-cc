@@ -28,10 +28,14 @@ AGENTS_DIR="${CLAUDE_DIR}/agents"
 MODE="both"
 FORCE=0
 UNINSTALL=0
+PROFILE=""
+DRY_RUN=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --only) MODE="$2"; shift 2 ;;
+    --profile) PROFILE="$2"; shift 2 ;;
+    --dry-run) DRY_RUN=1; shift ;;
     --force) FORCE=1; shift ;;
     --uninstall) UNINSTALL=1; shift ;;
     -h|--help)
@@ -41,12 +45,54 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# ── Profile resolution ──────────────────────────────────────────────────────
+# When --profile is set, it overrides --only with the profile's skills + agent
+# packs + hooks. Profile JSON is read by python3 (already a hard dep, no jq
+# required). The legacy --only flag continues to work unchanged when --profile
+# is not passed; default behavior preserved.
+PROFILE_SKILLS=""
+PROFILE_PACKS=""
+PROFILE_HOOKS=""
+if [[ -n "$PROFILE" ]]; then
+  PROFILE_FILE="${ROOT_DIR}/profiles/${PROFILE}.json"
+  if [[ ! -f "$PROFILE_FILE" ]]; then
+    echo "ERROR: profile not found: ${PROFILE}. Files in profiles/ — $(ls "${ROOT_DIR}/profiles/" 2>/dev/null | grep '\.json$' | tr '\n' ' ')"
+    exit 1
+  fi
+  if ! command -v python3 &>/dev/null; then
+    echo "ERROR: --profile requires python3"; exit 1
+  fi
+  PROFILE_SKILLS="$(python3 -c "
+import json
+d = json.load(open('${PROFILE_FILE}'))
+print(' '.join(d.get('skills', [])))
+")"
+  PROFILE_PACKS="$(python3 -c "
+import json
+d = json.load(open('${PROFILE_FILE}'))
+print(' '.join(d.get('agent_packs', [])))
+")"
+  PROFILE_HOOKS="$(python3 -c "
+import json
+d = json.load(open('${PROFILE_FILE}'))
+print(' '.join(d.get('hooks', []) or []))
+")"
+fi
+
 echo ""
 echo "Foundation + Workforce — install"
 echo "────────────────────────────────"
 echo "  Repo root:   $ROOT_DIR"
-echo "  Mode:        $MODE"
+if [[ -n "$PROFILE" ]]; then
+  echo "  Profile:     ${PROFILE}"
+  echo "  Skills:      ${PROFILE_SKILLS}"
+  echo "  Packs:       ${PROFILE_PACKS}"
+  echo "  Hooks:       ${PROFILE_HOOKS:-(none)}"
+else
+  echo "  Mode:        $MODE  (legacy; pass --profile <name> for profiled installs)"
+fi
 [[ $FORCE -eq 1 ]] && echo "  Force:       yes (agent files will be overwritten)"
+[[ $DRY_RUN -eq 1 ]] && echo "  Dry-run:     yes (no files will be written)"
 [[ $UNINSTALL -eq 1 ]] && echo "  Action:      UNINSTALL"
 echo ""
 
@@ -79,7 +125,9 @@ if [[ $UNINSTALL -eq 0 ]]; then
   echo ""
 fi
 
-mkdir -p "$SKILLS_DIR" "$AGENTS_DIR"
+if [[ $DRY_RUN -eq 0 ]]; then
+  mkdir -p "$SKILLS_DIR" "$AGENTS_DIR"
+fi
 
 # ── Skill linker ────────────────────────────────────────────────────────────────
 link_skill() {
@@ -89,7 +137,24 @@ link_skill() {
 
   if [[ $UNINSTALL -eq 1 ]]; then
     if [[ -L "$dst" ]]; then
+      [[ $DRY_RUN -eq 1 ]] && { echo "  - would remove skill link: $dst"; return; }
       rm "$dst"; echo "  - removed skill link: $dst"
+    fi
+    return
+  fi
+
+  if [[ $DRY_RUN -eq 1 ]]; then
+    if [[ -L "$dst" ]]; then
+      local cur; cur=$(readlink "$dst")
+      if [[ "$cur" == "$src" ]]; then
+        echo "  = skill $name (already linked)"
+      else
+        echo "  ↺ would update skill link: $name"
+      fi
+    elif [[ -e "$dst" ]]; then
+      echo "  ! skill $name (exists but not a symlink — would error on real run)"
+    else
+      echo "  + would link skill: $name"
     fi
     return
   fi
@@ -115,7 +180,19 @@ copy_agent() {
   local target="${AGENTS_DIR}/${prefix}${base}"
 
   if [[ $UNINSTALL -eq 1 ]]; then
-    [[ -f "$target" ]] && { rm "$target"; echo "  - removed agent: ${prefix}${base}"; }
+    if [[ -f "$target" ]]; then
+      [[ $DRY_RUN -eq 1 ]] && { echo "  - would remove agent: ${prefix}${base}"; return; }
+      rm "$target"; echo "  - removed agent: ${prefix}${base}"
+    fi
+    return
+  fi
+
+  if [[ $DRY_RUN -eq 1 ]]; then
+    if [[ -f "$target" && $FORCE -eq 0 ]]; then
+      echo "  = agent ${prefix}${base} (exists, would skip without --force)"
+    else
+      echo "  + would copy agent ${prefix}${base}"
+    fi
     return
   fi
 
@@ -126,14 +203,39 @@ copy_agent() {
   fi
 }
 
+# ── Resolve the effective skills + agent packs ──────────────────────────────
+# When --profile is set, the profile dictates everything. Otherwise, fall
+# back to the legacy --only mode. The two are mutually exclusive at runtime
+# but both are kept supported for back-compat.
+declare -a EFFECTIVE_SKILLS EFFECTIVE_PACKS
+
+if [[ -n "$PROFILE" ]]; then
+  read -r -a EFFECTIVE_SKILLS <<< "$PROFILE_SKILLS"
+  read -r -a EFFECTIVE_PACKS <<< "$PROFILE_PACKS"
+else
+  case "$MODE" in
+    foundation) EFFECTIVE_SKILLS=(foundation sync) ;;
+    workforce)  EFFECTIVE_SKILLS=(workforce sync) ;;
+    both)       EFFECTIVE_SKILLS=(foundation workforce sync) ;;
+    *) echo "Unknown --only value: $MODE"; exit 1 ;;
+  esac
+  # Legacy mode behavior (pre-profile): always install _shared + orchestrators,
+  # plus the requested pack(s).
+  EFFECTIVE_PACKS=(_shared orchestrators)
+  case "$MODE" in
+    foundation|both) EFFECTIVE_PACKS+=(foundation) ;;
+  esac
+  case "$MODE" in
+    workforce|both)  EFFECTIVE_PACKS+=(workforce) ;;
+  esac
+fi
+
 # ── Install skills ──────────────────────────────────────────────────────────────
 echo "Skills:"
-case "$MODE" in
-  foundation) link_skill foundation; link_skill sync ;;
-  workforce)  link_skill workforce; link_skill sync ;;
-  both)       link_skill foundation; link_skill workforce; link_skill sync ;;
-  *) echo "Unknown --only value: $MODE"; exit 1 ;;
-esac
+for skill in "${EFFECTIVE_SKILLS[@]}"; do
+  [[ -z "$skill" ]] && continue
+  link_skill "$skill"
+done
 echo ""
 
 # ── Install agents ──────────────────────────────────────────────────────────────
@@ -159,36 +261,39 @@ if [[ $UNINSTALL -eq 0 ]]; then
 fi
 
 echo "Agents:"
-
-# shared agents — always installed (usable by both skills), no prefix
-for f in "${ROOT_DIR}/agents/_shared/"*.md; do
-  [[ -e "$f" ]] || continue
-  copy_agent "$f" ""
-done
-
-# orchestrators — the new three-role spine (intent-validator, conductor,
-# alignment-guard). Always installed regardless of --only mode; both skills
-# delegate to them. Policy-relevant: agents/deprecated/README.md is *not*
-# walked here — it's documentation, not an agent.
-for f in "${ROOT_DIR}/agents/orchestrators/"*.md; do
-  [[ -e "$f" ]] || continue
-  copy_agent "$f" ""
-done
-
-if [[ "$MODE" == "foundation" || "$MODE" == "both" ]]; then
-  for f in "${ROOT_DIR}/agents/foundation/"*.md; do
-    [[ -e "$f" ]] || continue
-    copy_agent "$f" ""
-  done
-fi
-
-if [[ "$MODE" == "workforce" || "$MODE" == "both" ]]; then
-  for f in "${ROOT_DIR}/agents/workforce/"*.md; do
-    [[ -e "$f" ]] || continue
-    copy_agent "$f" ""
+# Honor the effective pack list (built above from --profile or --only).
+# Order matters: _shared and orchestrators install first so that pack-
+# specific agents see them already in place. Use ${[@]+...} to play nice
+# with `set -u` when EFFECTIVE_PACKS is empty (e.g. minimal profile).
+if [[ ${#EFFECTIVE_PACKS[@]} -eq 0 ]]; then
+  echo "  (no agent packs in this profile — skipping agent install)"
+else
+  for pack in "${EFFECTIVE_PACKS[@]}"; do
+    [[ -z "$pack" ]] && continue
+    pack_dir="${ROOT_DIR}/agents/${pack}"
+    if [[ ! -d "$pack_dir" ]]; then
+      echo "  ! pack $pack — directory missing at $pack_dir; skipping"
+      continue
+    fi
+    for f in "${pack_dir}/"*.md; do
+      [[ -e "$f" ]] || continue
+      # Skip README.md files in pack dirs — they're documentation, not agents.
+      [[ "$(basename "$f")" == "README.md" ]] && continue
+      copy_agent "$f" ""
+    done
   done
 fi
 echo ""
+
+# ── Install hook beacon ─────────────────────────────────────────────────────
+# When a profile declares hooks, write the profile name to ~/.workforce-profile
+# so hooks/dispatcher.sh can resolve which hooks to fire at runtime. Legacy
+# (--only) installs do not write this file; dispatcher falls back to "full".
+if [[ -n "$PROFILE" && $UNINSTALL -eq 0 && $DRY_RUN -eq 0 ]]; then
+  echo "$PROFILE" > "${HOME}/.workforce-profile"
+elif [[ $UNINSTALL -eq 1 ]]; then
+  rm -f "${HOME}/.workforce-profile" 2>/dev/null
+fi
 
 # ── Write path beacon ──────────────────────────────────────────────────────────
 if [[ $UNINSTALL -eq 1 ]]; then

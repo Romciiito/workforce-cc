@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "workforce-cc install profile",
+  "description": "Schema for profiles/<name>.json — declares which skills, agent packs, and hooks an install profile activates.",
+  "type": "object",
+  "required": ["name", "description", "skills", "agent_packs"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["foundation", "workforce", "sync"]
+      },
+      "uniqueItems": true,
+      "description": "Skills to symlink into ~/.claude/skills/."
+    },
+    "agent_packs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["_shared", "orchestrators", "foundation", "workforce"]
+      },
+      "uniqueItems": true,
+      "description": "Subdirectories of agents/ to copy into ~/.claude/agents/. Empty array = install no agents."
+    },
+    "hooks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "description": "Names of hook scripts to enable via hooks/dispatcher.sh. Empty / missing = no hooks."
+    }
+  }
+}
