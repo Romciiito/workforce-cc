@@ -187,3 +187,9 @@ If neither dir exists and the env var isn't set, all three layers silently no-op
 - Not a queue. Engineers don't talk to each other directly. The Conductor manages by defining and enforcing interfaces.
 - Not a replacement for human review. The Foundation Phase 3.5 confirmation and Workforce Phase 1.5 user review are mandatory. Alignment Guard's BLOCK halts the next wave; the human decides whether to re-dispatch upstream agents or accept the gap.
 - Not a runtime model orchestrator. We ship prompts and contracts; the LLM (Claude in `claude --print` or interactive sessions) is the runtime. This is by design — the system has no in-memory state across runs.
+
+## Note on running `health_score.py` against this repo
+
+`health_score.py` is designed for projects **bootstrapped by** workforce-cc (i.e. greenfield projects scaffolded via `/foundation`). It expects `vision.md`, `docs/claude/architecture.md`, `security-model.md`, `.claude/agents/`, `workplan.md`. Running it against workforce-cc itself produces a low score (around 7/50) because this repo is the *system*, not a project the system has scaffolded — the equivalent artifacts exist with different names (`docs/rebuild-narrative.md`, `docs/architecture.md`, the chunked commit history, `agents/orchestrators/`, etc.).
+
+This is expected behavior, not a regression. A future chunk could add `health_score.py --self` for meta-project introspection, but the current low score is structurally accurate: workforce-cc isn't *its own* `/foundation` output, and shouldn't be measured against that schema.
