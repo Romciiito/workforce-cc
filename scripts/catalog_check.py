@@ -35,6 +35,22 @@ CATALOGS_DIR = REPO_ROOT / "catalogs"
 
 ID_PATTERN = re.compile(r"^[a-z][a-z0-9._-]*$")
 
+# Curation policy: only catalogs whose upstream license is on this allowlist
+# may be redistributed under catalogs/<source>/. Pattern from build-your-own-x's
+# curation gate: every entry is verified to have a redistributable license
+# before it lands. New licenses can be added here only with deliberate review.
+ALLOWED_LICENSES = frozenset({
+    "MIT",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "CC0-1.0",
+    "CC0",
+    "ISC",
+    "Unlicense",
+    "MPL-2.0",
+})
+
 
 def short_hash(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()[:16]
@@ -47,6 +63,29 @@ def load_index(catalog: str) -> dict:
     return json.loads(path.read_text())
 
 
+def _check_license(catalog: str, index: dict) -> list[str]:
+    """Curation gate: assert the catalog's declared license is on the allowlist
+    AND a LICENSE file exists alongside the index. Pattern from build-your-own-x's
+    'every entry must declare a license' rule.
+    """
+    failures: list[str] = []
+    catalog_dir = CATALOGS_DIR / catalog
+    declared = index.get("source", {}).get("license")
+    if not declared:
+        failures.append("source.license missing in index.json")
+    elif declared not in ALLOWED_LICENSES:
+        failures.append(
+            f"source.license={declared!r} is not on the allowlist. "
+            f"Allowed: {sorted(ALLOWED_LICENSES)}. "
+            f"To add a new license, review the upstream redistribution terms first."
+        )
+
+    license_file = catalog_dir / "LICENSE"
+    if not license_file.exists():
+        failures.append(f"missing LICENSE file at {license_file.relative_to(REPO_ROOT)}")
+    return failures
+
+
 def cmd_validate(catalog: str, as_json: bool) -> int:
     index = load_index(catalog)
     catalog_dir = CATALOGS_DIR / catalog
@@ -55,6 +94,10 @@ def cmd_validate(catalog: str, as_json: bool) -> int:
     failures: list[str] = []
     seen_ids: set[str] = set()
     referenced_bodies: set[Path] = set()
+
+    # License gate runs first — if the catalog can't be redistributed, no other
+    # check matters.
+    failures.extend(_check_license(catalog, index))
 
     for entry in index.get("entries", []):
         eid = entry.get("id", "<missing>")
