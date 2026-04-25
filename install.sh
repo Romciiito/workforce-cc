@@ -214,9 +214,9 @@ if [[ -n "$PROFILE" ]]; then
   read -r -a EFFECTIVE_PACKS <<< "$PROFILE_PACKS"
 else
   case "$MODE" in
-    foundation) EFFECTIVE_SKILLS=(foundation sync) ;;
-    workforce)  EFFECTIVE_SKILLS=(workforce sync) ;;
-    both)       EFFECTIVE_SKILLS=(foundation workforce sync) ;;
+    foundation) EFFECTIVE_SKILLS=(foundation sync perf) ;;
+    workforce)  EFFECTIVE_SKILLS=(workforce sync perf) ;;
+    both)       EFFECTIVE_SKILLS=(foundation workforce sync perf) ;;
     *) echo "Unknown --only value: $MODE"; exit 1 ;;
   esac
   # Legacy mode behavior (pre-profile): always install _shared + orchestrators,
