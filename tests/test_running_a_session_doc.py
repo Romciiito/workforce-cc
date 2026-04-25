@@ -91,6 +91,33 @@ def test_doc_distinguishes_when_not_to_use() -> None:
     assert "When NOT to use" in body or "when not to use" in body.lower()
 
 
+def test_doc_documents_five_skills() -> None:
+    """After Chunks 29 + 32, /perf and /harness must appear alongside the original three."""
+    body = _body()
+    for skill in ["/foundation", "/workforce", "/sync", "/perf", "/harness"]:
+        assert skill in body, f"running-a-session.md missing skill: {skill}"
+
+
+def test_doc_explains_multi_harness_selection() -> None:
+    """Chunk 30 introduced --harnesses; the doc must explain it."""
+    body = _body()
+    assert "Multi-harness" in body or "multi-harness" in body.lower()
+    assert "--harnesses" in body
+    for harness in ["claude", "cursor", "codex", "opencode", "gemini"]:
+        assert harness in body, f"missing harness in doc: {harness}"
+
+
+def test_doc_explains_context_only_distinction() -> None:
+    body = _body()
+    assert "context-only" in body.lower() or "Context-only" in body
+
+
+def test_doc_documents_adding_harness_mid_project() -> None:
+    body = _body()
+    assert "Adding a harness mid-project" in body or "mid-project" in body.lower()
+    assert "/harness" in body
+
+
 def test_doc_pointers_resolve_to_real_files() -> None:
     """Every relative-path link in the doc should point to a file that exists."""
     body = _body()

@@ -22,6 +22,47 @@ You can run all of this in one terminal sequentially (the orchestrator agents wi
 
 ---
 
+## The five user-facing skills
+
+| Skill | What it does | When |
+|---|---|---|
+| `/foundation` | Greenfield bootstrap (intent → analysis → architecture → workplan → scaffold → build agents) | New project / empty directory |
+| `/workforce` | Existing-project audit (scan → score → conditional intent → audit agents → drift report) | Existing project, weekly/monthly |
+| `/sync` | 5-second read-only health check + orchestration-state peek | Daily / pre-commit |
+| `/perf` | Slim wrapper around performance-analyst — bottleneck ranking + measurement plan | Pre-launch / "why is this slow" |
+| `/harness` | Apply or refresh adapter files (.claude/, .cursor/, AGENTS.md, ...) for the project's selected harnesses | Adopt a new harness mid-project / refresh after switching profiles |
+
+For a multi-terminal dispatch (Mode C below) you orchestrate manually using `intent-validator`, `conductor`, `alignment-guard`, and `pipeline_runner.py dispatch-wave`.
+
+---
+
+## Multi-harness selection
+
+workforce-cc ships adapter files for five AI-coding-agent harnesses:
+
+| Harness | Primary file | Orchestration |
+|---|---|---|
+| `claude` | `CLAUDE.md`, `.claude/agents/` | **Full** — runs all orchestrators |
+| `cursor` | `.cursor/rules/*.mdc` | Context-only |
+| `codex` | `AGENTS.md` | Context-only |
+| `opencode` | `.opencode/agents/` | Context-only |
+| `gemini` | `GEMINI.md` | Context-only |
+
+Select harnesses at install time:
+
+```bash
+./install.sh --harnesses claude                           # default
+./install.sh --harnesses claude,cursor                    # IDE + orchestrator
+./install.sh --harnesses claude,cursor,codex              # three harnesses
+./install.sh --harnesses claude,cursor,codex,opencode,gemini   # all five
+```
+
+The selection is persisted to `~/.workforce-harnesses` and applied automatically by Foundation Phase 3 (scaffold) for new projects. Existing projects pick up adapters via `/harness` (see "Adding a harness mid-project" below).
+
+**"Context-only"** means the harness sees the workforce-cc artifacts (intent.md, dispatch.md, alignment-report.md, ADRs) but doesn't run intent-validator / conductor / alignment-guard itself. The adapter explicitly recommends switching to Claude Code when the user asks for orchestration.
+
+---
+
 ## Prerequisites
 
 - workforce-cc installed via `./install.sh` (any profile that includes the `orchestrators` agent pack).
@@ -218,6 +259,76 @@ Output: `.workforce/integration.md` with cross-cuts found, blocked items, and th
 ```
 
 Drift check against `intent.md`. PASS → run is done; PASS-WITH-NOTES → log findings in `decisions.md`; BLOCK → halt and re-dispatch.
+
+---
+
+## Quick modes — `/perf` and `/harness`
+
+### `/perf` — performance diagnosis
+
+When you want bottleneck ranking but not a full `/workforce` run:
+
+```
+$ cd my-project
+$ claude
+> /perf
+  ... reads architecture.md + source code; spawns performance-analyst;
+  surfaces top 3 bottlenecks + measurement plan + sequencing ...
+```
+
+Read-only diagnosis. The agent writes `performance-model.md` and exits. No alignment guard, no conductor, no other engineers. Use when:
+
+- Pre-launch: "what's likely to bottleneck under load?"
+- Post-incident: "why was this slow?" with a specific symptom.
+- Periodic: every few sprints, before anyone scales the project.
+
+### `/harness` — apply / refresh harness adapters
+
+When you want to add a harness mid-project, or refresh adapters after switching install profiles:
+
+```
+$ cd my-project
+$ claude
+> /harness cursor
+  ... reads project context; runs harness_install.py for cursor;
+  writes .cursor/rules/00-workforce-cc.mdc + 01-orchestration-pointers.mdc ...
+```
+
+Without arguments, `/harness` reads `~/.workforce-harnesses` and applies every harness in the beacon. With explicit arguments (`/harness claude,cursor,codex`), it overrides the beacon for this run.
+
+If you apply a harness not in the global beacon, the skill asks before updating `~/.workforce-harnesses`. Project-scope action shouldn't silently change global state.
+
+---
+
+## Adding a harness mid-project
+
+Two paths:
+
+**Path 1 — global change**: re-run install.sh with the new harness list. Future scaffolds pick up the change automatically.
+
+```bash
+~/.foundation-path/install.sh --harnesses claude,cursor,codex
+# Existing projects keep their old adapter files; new projects get all three.
+```
+
+Then in the existing project, run `/harness` to apply the new adapters:
+
+```
+$ cd existing-project
+$ claude
+> /harness
+  ... applies the new harnesses' adapters to this project ...
+```
+
+**Path 2 — project-only change**: skip the global beacon update. Apply the new harness only to this project:
+
+```
+> /harness codex
+  ... applies the codex adapter to this project. Asks whether to
+  update the global beacon. Answer 'n' to keep the change project-local.
+```
+
+Useful when you're experimenting with a harness on one project before adopting it system-wide.
 
 ---
 
