@@ -23,6 +23,9 @@ ADRs are deliberately short. Anything longer than ~150 lines belongs as a doc, n
 | [007](007-deprecation-headers-not-removal.md) | Deprecation headers, not file removal | Accepted |
 | [008](008-multi-terminal-via-files.md) | Multi-terminal communication via files only | Accepted |
 | [009](009-multi-harness-shipping.md) | Multi-harness shipping with selectable adapters | Accepted |
+| [010](010-mcp-catalog-as-separate-namespace.md) | MCP catalog as a separate namespace | Accepted |
+| [011](011-dispatch-wave-spawning-from-md.md) | Spawning waves from `dispatch.md`, not from arguments | Accepted |
+| [012](012-permission-mode.md) | Permission modes per dispatched engineer | Accepted |
 
 ## When to write a new ADR
 

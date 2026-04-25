@@ -1,14 +1,17 @@
 # workforce-cc
 
-Agentic workflows for Claude Code. Three slash commands that cover the full lifecycle of a software project, sharing a common multi-terminal pipeline:
+Agentic workflows for Claude Code (and four other harnesses). Six slash commands that cover the full lifecycle of a software project, sharing a common multi-terminal pipeline:
 
 | Skill | When to use | What it produces |
 |-------|-------------|------------------|
 | **`/foundation`** | Greenfield — empty directory, a rough idea | A validated `intent.md`, full design pipeline, scaffolded project, drift-checked workplan, 6 project-specific build agents |
 | **`/workforce`** | Existing project — running or stale | A health score, a (conditional) `intent.md`, conservative plan of which agents to run, missing docs created, drift report |
 | **`/sync`** | Any moment you want a 5-second health check | A one-screen summary — no agents, no file writes |
+| **`/perf`** | Pre-launch — "why is this slow / what'll bottleneck under load?" | `performance-model.md` — top-3 bottlenecks, measurement plan, sequencing |
+| **`/security`** | Threat model / auth review / pre-launch security check | `security-model.md` — CRITICAL/HIGH threats, Phase 0 checklist, compliance verdicts |
+| **`/harness`** | Add Cursor/Codex/Gemini support to an existing project | Adapter files for selected harnesses |
 
-All three flow through one shared backbone: **Intent Validator → Conductor → Alignment Guard**, with each engineer-agent running in its own terminal with its own 1M context window. Communication is via artifacts on disk, not in-conversation handoffs.
+The first three flow through one shared backbone: **Intent Validator → Conductor → Alignment Guard**, with each engineer-agent running in its own terminal with its own 1M context window. Communication is via artifacts on disk, not in-conversation handoffs. The last three are slim wrappers around a single engineer (`performance-analyst`, `security-analyst`) or the harness installer.
 
 ---
 
