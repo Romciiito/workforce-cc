@@ -1,0 +1,6 @@
+{
+  "$schema": "../schema.json",
+  "description": "Per-project allowlist of catalog entries to install into .claude/. Empty by default — workforce-orchestrator recommends entries based on project stack, user confirms.",
+  "enabled": [],
+  "declined": []
+}

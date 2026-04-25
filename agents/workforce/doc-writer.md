@@ -185,3 +185,31 @@ All created docs use [ placeholder ] markers where real information was not avai
 ```
 
 Do not commit. Do not stage. The user reviews before any git operations.
+
+---
+
+## Adversarial self-critique (run before declaring DONE)
+
+Before you finalise the doc set, read each created doc once more and ask yourself:
+
+1. **"Verification avoidance: did I create a doc with `[ placeholder ]` everywhere because filling it in was hard?"** Placeholders are valid for genuinely-unknown facts. They are not valid as a way to ship a stub and move on. Investigate before placeholdering.
+2. **"Seduced by the first 80%: does each doc cover the headings the gap-report demanded and skip the substance the team will actually need?"** A doc with the right outline but no content is a deception.
+3. **"Did I edit any existing content while 'fixing' a stale doc?"** You append `## ⚠ Update Needed` sections to stale docs. You do not rewrite them. Re-read the doc-writer rules.
+4. **"Three-reviewer test: would three different teammates, reading these docs cold, reach the same conclusions about the project?"** If they'd disagree, your placeholders are masking real ambiguity.
+5. **"Did I create a doc that wasn't in the gap-report?"** Scope creep. The gap-analyst decided the scope; you implement it.
+
+Your value is in writing the doc the team will actually read. Don't let outline-completeness feel like documentation.
+
+---
+
+## Read-only constraints (outside your territory)
+
+You write only files explicitly approved in the gap-report's plan. You **must not**:
+
+- Modify any existing doc body. For stale docs, append an `## ⚠ Update Needed` section at the end only.
+- Create any doc not listed in the approved gap-report plan.
+- Delete or move any file.
+- Edit source code, tests, configuration, or CI files.
+- Use Bash for `rm`, `mv`, `git commit`, `git add` (the user stages and commits, not you).
+
+You **may** use Bash for read-only inspection (`cat`, `ls`, `find`, `grep`) when verifying that a stale doc's claims contradict current code before flagging it.

@@ -28,6 +28,34 @@ If `/init` has not been run yet, instruct the user to run it first, then re-trig
 
 When the user triggers this skill, execute the phases below **in order**. Each phase must complete before the next begins. Save all outputs to the **current working directory** (the project folder).
 
+The pipeline now flows through the shared backbone described in [`skills/_backbone/BACKBONE.md`](../_backbone/BACKBONE.md): **Intent Validator → Phase 0–1C engineer pool → Alignment Guard → Phase 2–4 scaffolding**. Phase -1 (Intent Validator) runs first to convert raw user input into a falsifiable `intent.md` before brainstorm starts. Phase 3.6 (Alignment Guard) runs after scaffolding to confirm no drift was introduced.
+
+---
+
+## PHASE -1 — INTENT VALIDATION
+
+**Goal**: Convert the raw user request into a falsifiable, scoped goal before any other agent runs.
+
+Spawn the `intent-validator` agent.
+
+```
+Spawn: intent-validator
+  Reads:  the user's raw request (passed in as opening prompt),
+          .workforce/intent.md if it exists (revision mode),
+          vision.md, CLAUDE.md, README.md if present
+  Output: .workforce/intent.md
+```
+
+The Intent Validator is **blocking by design**. It refuses to write `intent.md` until each required section (`What it is`, `Who it's for`, `Concrete success`, `Constraints`, `Out of scope`, `Open questions`) has falsifiable content. It uses three modes:
+
+- **Mode A (greenfield interrogation)** — empty project, no prior intent. Full Socratic protocol, max 6 questions.
+- **Mode B (revision)** — existing `intent.md` or `vision.md`. Asks only about the parts that contradict the new request or are missing.
+- **Mode C (pass-through)** — request is already concrete (specific feature, file, or bug with acceptance criteria). One-paragraph `intent.md`, no questions.
+
+Wait for `.workforce/intent.md` to exist before proceeding to Phase 0. If the Validator returns `INTENT INCOMPLETE`, surface the specific question to the user and re-invoke after they answer. Do **not** proceed to Phase 0 with placeholder intent.
+
+For very simple "fix this bug in `auth.py:foo`" requests where Phase -1 returns Mode C, the rest of the pipeline can short-circuit: Phase 0 brainstorm becomes a one-paragraph confirmation, Phases 1A–1C become whichever single agent is needed. Use judgment.
+
 ---
 
 ## PHASE 0 — DEEP BRAINSTORM
@@ -192,6 +220,39 @@ For each skill the user selects, run:
 python3 "$FOUNDATION_ROOT/scripts/install_skill.py" --skill <skill-name>
 ```
 
+### Phase 2.5 — MCP server suggestions
+
+After skill installs settle, run the MCP catalog query to surface MCP servers that match the chosen stack:
+
+```bash
+python3 "$FOUNDATION_ROOT/scripts/mcp_query.py" list --stack <selected_stack>
+```
+
+Present the result to the user:
+
+```
+Based on your stack (<stack>), here are recommended MCP servers from the catalog:
+
+  github            (vcs)        Read GitHub repos, issues, PRs, and Actions runs.
+  postgres          (database)   Query a PostgreSQL database read-only.
+  fetch             (web)        Fetch a URL and parse to text/markdown.
+  ...
+
+Add any to .claude/settings.local.json? (Enter ids separated by commas, or press Enter to skip)
+```
+
+For each server the user selects, run:
+
+```bash
+python3 "$FOUNDATION_ROOT/scripts/mcp_query.py" emit <server-id> \
+  --apply --project-dir . \
+  --placeholders KEY=VALUE [KEY=VALUE...]
+```
+
+`--placeholders` resolves any `${VAR_NAME}` in the server's `env` block (e.g. `--placeholders GITHUB_TOKEN=ghp_...`). The user provides real values; the script merges the configuration into `.claude/settings.local.json`'s `mcpServers` map without overwriting existing entries.
+
+If the user skips, do nothing. The MCP catalog is fully optional — projects work fine without any MCP servers configured.
+
 ---
 
 ## PHASE 3 — SCAFFOLD GENERATION
@@ -284,6 +345,30 @@ If the user types `"revise all"`:
 
 ---
 
+## PHASE 3.6 — ALIGNMENT GUARD (vision)
+
+**Goal**: Confirm the scaffolded project still aligns with the user's original intent before the build team is activated.
+
+Spawn the `alignment-guard` agent in vision mode.
+
+```
+Spawn: alignment-guard --mode=vision
+  Reads:  .workforce/intent.md (required), vision.md (if exists),
+          spec.md, architecture.md, workplan.md, decisions.md,
+          README.md (first 30 lines), project-snapshot.md (if exists)
+  Output: .workforce/alignment-report.md
+```
+
+The agent returns one of:
+
+- **PASS** — proceed to Phase 4.
+- **PASS-WITH-NOTES** — surface findings to the user; user decides whether to proceed or revise. If they proceed, link the report from `decisions.md`.
+- **BLOCK** — halt. Surface required actions. Do not invoke `agent-generator` until the BLOCK is resolved (typically by re-running an upstream agent — Phase 1B architect, Phase 1C workplan-builder — with corrections).
+
+This gate is the **last drift check** before Foundation hands the project off to the build team. Output-validator (Phase 1B.5) caught cross-cuts between analysis artifacts; Alignment Guard now catches drift between intent and the integrated whole. Both run for one release; their consolidation is tracked in [`docs/artifact-contract.md`](../../docs/artifact-contract.md) and may collapse into a single role in a later chunk.
+
+---
+
 ## PHASE 4 — AGENT GENERATION + TEAM ACTIVATION
 
 Run the `agent-generator` agent **in create mode**. It reads all Foundation output and writes project-specific implementation agents to `.claude/agents/`:
@@ -339,11 +424,14 @@ Invoke the `foundation-orchestrator` agent to read workplan.md and propose the f
 ## Rules
 
 - Never skip a phase or run phases out of order
+- **Phase -1 is blocking** — `intent-validator` must produce `.workforce/intent.md` with all six required sections before Phase 0 starts
 - Never proceed from Phase 1A to 1B without the user confirmation checkpoint
 - **Never proceed from Phase 3.5 to Phase 4 without explicit "confirm" from the user**
+- **Never invoke `agent-generator` (Phase 4) if `alignment-report.md` (Phase 3.6) returned BLOCK**
 - Write every output file — nothing lives only in memory
 - The brainstorm is Socratic — one question at a time, never a list of questions
 - Security items from security-model.md MUST appear in workplan Phase 0
 - **workplan-builder must not run until validation-report.md exists with no unresolved gaps**
 - `agent-generator` runs before `foundation-orchestrator` is activated — build agents must exist first
 - `foundation-orchestrator` is always the last thing activated
+- Use `scripts/workforce_paths.py write-path <name>` for `intent.md`, `dispatch.md`, `integration.md`, `alignment-report.md` — never hardcode `.workforce/` paths

@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "workforce-cc catalog index",
+  "description": "Schema for catalogs/<source>/index.json — declares every catalog entry with provenance.",
+  "type": "object",
+  "required": ["source", "entries"],
+  "properties": {
+    "source": {
+      "type": "object",
+      "required": ["repo", "license"],
+      "properties": {
+        "repo": {
+          "type": "string",
+          "description": "GitHub <owner>/<repo> the catalog originated from."
+        },
+        "license": {
+          "type": "string",
+          "description": "Upstream license. Must be redistributable (MIT, Apache-2.0, CC0, BSD)."
+        },
+        "upstream_commit": {
+          "type": ["string", "null"],
+          "description": "Git SHA of the upstream commit this catalog was synced from. Null until first sync."
+        },
+        "synced_at": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "ISO-8601 UTC timestamp of last successful sync."
+        }
+      }
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "source_path", "summary", "tags"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9._-]*$",
+            "description": "Stable identifier; must be unique within the catalog. Use dot-namespacing (e.g. 'ecc.security-reviewer')."
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["agent", "skill", "command", "hook", "mcp"],
+            "description": "Type of catalog entry."
+          },
+          "source_path": {
+            "type": "string",
+            "description": "Path within bodies/ where the entry's markdown body lives."
+          },
+          "upstream_path": {
+            "type": "string",
+            "description": "Path of this entry in the upstream repo, for provenance."
+          },
+          "upstream_sha": {
+            "type": ["string", "null"],
+            "description": "Content hash from the upstream commit. Drift detection compares this against current upstream."
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 280,
+            "description": "One-line description, used in catalog_query.py search results."
+          },
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Free-form taxonomy. Conventions: stack tags (`stack:python-fastapi`), domain tags (`domain:security`), kind tags (`role:reviewer`)."
+          },
+          "stacks": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Stacks this entry is recommended for. Empty array = applicable to any stack."
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,43 @@
+---
+description: workforce-cc project context — read at the start of every Cursor session.
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# {{ project_name }}
+
+{{ description }}
+
+This project uses the **workforce-cc** system for project orchestration. workforce-cc is primarily a Claude Code system; in Cursor sessions you should:
+
+- **Read** the workforce-cc artifacts as context. They tell you what the project is, who it's for, and what's been decided.
+- **Do not invoke the orchestrator agents directly** — those run inside Claude Code, not Cursor.
+- **Surface a recommendation** when an action would be better done from Claude Code (e.g. "this needs a multi-engineer dispatch — switch to Claude Code and run `/workforce`").
+
+## Where to find canonical context
+
+- `.workforce/intent.md` — what this project is supposed to be.
+- `.workforce/dispatch.md` (if present) — current run's per-engineer contracts.
+- `.workforce/alignment-report.md` (if present) — latest drift status.
+- `docs/claude/architecture.md` — system architecture.
+- `docs/claude/development.md` — how to run, test, deploy.
+- `docs/claude/design-decisions.md` — why the stack is what it is.
+- `docs/decisions/` — load-bearing architectural decisions (ADRs).
+
+## Behavioral rules (mandatory every session)
+
+1. Read `.workforce/intent.md` before any architectural change. If it doesn't exist, the project's intent hasn't been captured — recommend a Claude Code session with `/intent-validator`.
+2. Use the env var prefix `{{ env_prefix }}_` for all application env vars.
+3. Never hard-code credentials. They live in `.env` (gitignored).
+4. Prefer editing existing files to creating new ones.
+
+## When to switch to Claude Code
+
+If the user asks for:
+
+- A multi-engineer dispatch ("design and build feature X with backend + frontend + tests").
+- An audit / drift check ("is the architecture still aligned with the intent?").
+- A scaffolded greenfield project.
+- A review against the alignment guard (PASS / PASS-WITH-NOTES / BLOCK).
+
+…recommend they run `/foundation`, `/workforce`, `/sync`, `/perf`, or invoke `intent-validator` / `conductor` / `alignment-guard` directly in Claude Code. Cursor is the right tool for in-IDE refinement, not for orchestration.

@@ -1,0 +1,20 @@
+{
+  "$schema": "../manifest-schema.json",
+  "name": "codex",
+  "description": "OpenAI Codex CLI. Reads AGENTS.md as the canonical project context. Adapter shim — Codex doesn't run workforce-cc orchestrators; AGENTS.md surfaces the workforce-cc context for Codex sessions.",
+  "writes": [
+    {
+      "kind": "rules-file",
+      "target": "AGENTS.md",
+      "source": "harnesses/codex/AGENTS.md.jinja",
+      "render": "jinja2",
+      "overwrite": true
+    }
+  ],
+  "supports": {
+    "orchestration": "context-only",
+    "mcp": false,
+    "hooks": false,
+    "skills": false
+  }
+}

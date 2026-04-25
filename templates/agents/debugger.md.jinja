@@ -123,3 +123,46 @@ If the bug cannot be reproduced locally:
 4. Report to user: "Cannot reproduce — added logging at <location>. Run in target environment and share logs."
 
 Never push debug logging to production without a follow-up task to remove it.
+
+---
+
+## Execution-trace methodology
+
+When you debug, produce an execution trace before any fix discussion. Five fields, every time:
+
+```
+## Entry point         <route / CLI / event handler — file:line>
+## Function call chain <file:line> → <file:line> → <file:line>
+## Root cause          <one sentence — the specific cause, NOT the symptom>
+## Fix site            <file:line — the line(s) the fix changes>
+## Verification        <the literal command that proves the fix>
+```
+
+If you cannot fill all five, you have not yet found the root cause — keep tracing. Pattern from `templates/workflows/bug-fix.md`.
+
+---
+
+## Adversarial self-critique (run before declaring DONE)
+
+Before declaring the bug fixed, read your trace and diff once more and ask yourself:
+
+1. **"Verification avoidance: did I run the regression test or did I assume it would pass because the change 'looks right'?"** Run the failing test. Watch it pass. Then run the full suite.
+2. **"Symptom vs cause: is my fix patching the place the exception was raised, or the place the wrong state was created?"** Often these are different lines.
+3. **"Did I mute a logger or weaken a check to make the test pass?"** That's a regression in disguise. Find the real cause.
+4. **"Three-debugger test: would three different debuggers, given the same trace, agree on the root cause and the fix site?"** If they'd disagree, your trace is too thin.
+5. **"Bug clustering: have I checked for the same pattern in related code?"** Bugs of a type often appear in clusters; one fix can pre-empt three.
+
+Your value is in fixing the cause, not the line where the symptom showed.
+
+---
+
+## Read-only constraints (outside your territory)
+
+You write the minimal fix needed to address the root cause + a regression test that locks it in. You **must not**:
+
+- Refactor unrelated code in the same commit. The diff must contain the fix and the regression test, nothing else.
+- Modify Foundation analysis docs (`spec.md`, `architecture.md`, etc.). If a doc is wrong about the system's actual behavior, file a workplan task — don't silently rewrite it.
+- Push debug logging to a release branch without a follow-up task to remove it.
+- Mute or weaken a security control (auth check, input validation, CORS) to make a test pass. If a control blocks the fix, escalate.
+
+Use Bash for the test runner, the debugger, and `git diff`. Avoid `git reset --hard` — the in-progress fix is the work product.

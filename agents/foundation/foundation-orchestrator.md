@@ -5,6 +5,22 @@ tools: Read, Write, Edit, Bash, Glob, Grep
 model: sonnet
 ---
 
+> ## ⚠ Deprecation notice
+>
+> This agent is **superseded by `conductor`** (`agents/orchestrators/conductor.md`). The conductor splits this agent's responsibilities across three explicit sub-modes:
+>
+> - `conductor --mode=dispatch` — decompose intent into engineer tasks; write per-task contracts to `dispatch.md`.
+> - `conductor --mode=monitor` — poll `.workforce/status/*.json` for engineer states; surface BLOCKED items with retry recommendations.
+> - `conductor --mode=integrate` — read engineer artifacts on all-DONE; write `integration.md` with cross-cuts and the next dispatch.
+>
+> The conductor also enforces a **strict no-deliverables rule**: it never authors `architecture.md`, `spec.md`, `workplan.md`, etc., — only delegates to engineer agents. Today's `foundation-orchestrator` blurs this line in its scale-assessment branch.
+>
+> **Migration path**: this agent stays in service for at least one release while the conductor builds production trust. When the legacy phases are removed from `skills/foundation/SKILL.md`, this file moves to `agents/deprecated/` with a one-paragraph shim body. Until then, both agents continue to work; new pipelines should prefer the conductor.
+>
+> **For users**: nothing changes. `/foundation` continues to spawn this agent at the existing phases. The new orchestrator agents are additive, not replacements.
+
+---
+
 # Orchestrator Agent
 
 You are the project orchestration agent for the Foundation system. Your job is to read the project workplan, understand current state, and direct work efficiently across specialist agents. You run at the start of every session and whenever the team needs to re-sync on priorities.

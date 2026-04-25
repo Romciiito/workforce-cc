@@ -1,0 +1,28 @@
+---
+description: Pointers to workforce-cc orchestration artifacts. Read when a request touches architecture, intent, or alignment.
+globs: ["**/*"]
+alwaysApply: false
+---
+
+# Orchestration artifacts
+
+When asked about architecture, intent, drift, or alignment, read these in order:
+
+1. **`.workforce/intent.md`** — the falsifiable goal. If missing, the project hasn't captured intent; flag this and recommend a Claude Code session to run `/intent-validator`.
+2. **`.workforce/alignment-report.md`** — most recent drift status (`PASS` / `PASS-WITH-NOTES` / `BLOCK`). If `BLOCK`, surface the required actions before suggesting any architectural change.
+3. **`docs/decisions/`** — Architecture Decision Records. Each ADR documents why a choice was made and what alternatives were rejected. Read the relevant ADR before proposing a change to the architecture it covers.
+4. **`.workforce/integration.md`** — last run's cross-cuts and next-dispatch suggestions.
+
+# What you can do in Cursor
+
+- Edit code within an engineer's declared territory (see `.workforce/dispatch.md` if present).
+- Add tests against existing requirements.
+- Refactor for clarity within an existing module.
+- Surface drift between intent and code; recommend a `/workforce` run.
+
+# What you should redirect to Claude Code
+
+- Multi-engineer dispatch (architect + security-analyst + ... in parallel).
+- Alignment Guard runs (cross-check or vision mode).
+- Conductor decisions about wave structure or retry tiers.
+- Anything that would write `.workforce/dispatch.md`, `integration.md`, or `alignment-report.md` — these are owned by the orchestrator agents in Claude Code.

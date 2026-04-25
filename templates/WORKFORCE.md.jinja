@@ -27,6 +27,17 @@
 - {{ agent.name }} — {{ agent.outcome }}
 {% endfor %}
 
+### Orchestration artifacts
+
+{% if orchestration %}
+- `intent.md` — {{ orchestration.intent_status | default("captured") }}
+- `dispatch.md` — {{ orchestration.dispatch_summary | default("see .workforce/dispatch.md") }}
+- `alignment-report.md` — **{{ orchestration.alignment_status | default("PASS") }}**{% if orchestration.alignment_findings %} ({{ orchestration.alignment_findings }} findings){% endif %}
+- `integration.md` — {{ orchestration.integration_summary | default("see .workforce/integration.md") }}
+{% else %}
+_(no .workforce/ orchestration this run — this was a /sync-style audit only)_
+{% endif %}
+
 ### Docs Created
 
 {% for doc in docs_created %}

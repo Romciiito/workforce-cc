@@ -24,14 +24,19 @@
 | `docs/claude/development.md` | Run locally, write a test, add a route/model/page, deploy |
 | `docs/claude/design-decisions.md` | Question why something is built a certain way, propose alternatives |
 | `docs/claude/env-vars.md` | Add a new config value, debug a missing env var, set up a new environment |
+| `.workforce/intent.md` | Recall what the project is supposed to be — read before any architectural decision |
+| `.workforce/dispatch.md` (if present) | Find the current run's per-engineer contracts |
+| `.workforce/alignment-report.md` (if present) | Check whether the latest run drifted from intent and what to address first |
 
 ---
 
 ## Critical Gotchas
 
-- All env vars use the `{{ project_name | upper | replace("-", "_") | replace(" ", "_") }}_` prefix — never use bare names.
+- All env vars use the `{{ env_prefix }}_` prefix — never use bare names.
 - Check `docs/claude/development.md` for exact run commands before assuming defaults.
 - See `docs/claude/design-decisions.md` before proposing a stack or architecture change.
+- When dispatched as part of a multi-terminal run, write `.workforce/runs/<ts>/<engineer>/approach.md` *before* producing your declared output(s). The conductor reads it during integration.
+- A `BLOCK` in `.workforce/alignment-report.md` halts the next wave mechanically. Resolve required actions before re-dispatching.
 {% if critical_rules %}
 
 ---

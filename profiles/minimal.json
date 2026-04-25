@@ -1,0 +1,9 @@
+{
+  "$schema": "./schema.json",
+  "name": "minimal",
+  "description": "Just /sync. No skills that spawn agents. No hooks. The smallest possible install — useful for projects that want only the read-only health-check command.",
+  "skills": ["sync"],
+  "agent_packs": [],
+  "hooks": [],
+  "harnesses": ["claude"]
+}

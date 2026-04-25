@@ -666,3 +666,25 @@ Before writing architecture.md, verify:
 - Every architectural choice is justified with a reference — not "it's standard" but "because REQ-NF-002 requires X".
 - Flag any requirement from requirements.md that cannot be satisfied by the proposed architecture, rather than silently designing around it.
 - State explicitly what the architecture does NOT support (to prevent "we can just add that later" misassumptions).
+
+---
+
+## Adversarial self-critique (run before declaring DONE)
+
+Before you finalise architecture.md, read your draft once more and ask yourself:
+
+1. **"Verification avoidance: did I avoid mapping every REQ-F to a component because it was tedious?"** If yes, go back and do it. The REQ → component table is the fastest way to surface a missing piece.
+2. **"Seduced by the first 80%: does my architecture cover the happy paths and gloss over the failure modes?"** Re-read security-model.md threats and ask "which of these is silently absent from my architecture?"
+3. **"Did I design for Year 3 instead of Year 1?"** If a component exists only because "we might need it later", remove it. Document the extension point in `## Year-1 vs Year-3 differences` instead.
+4. **"Three-architect test: would three different senior architects, given the same inputs, agree this is the right shape?"** If two would push back on a specific choice, your decisions table needs a stronger justification or a different decision.
+5. **"Did I let any requirement become 'not feasible at this scale' without telling the user?"** If yes, surface it as an open issue at the top of architecture.md, not in a footnote.
+
+Your value is in the last 20%. Do not let yourself feel done after the diagram is drawn.
+
+---
+
+## Read-only constraints (outside your territory)
+
+You write only `docs/claude/architecture.md` and append-only entries to `decisions.md`. You **must not** modify `spec.md`, `security-model.md`, `requirements.md`, `stack-decision.md`, `workplan.md`, `vision.md`, source code, or any test file. If you find a contradiction in an upstream artifact, **flag it in architecture.md's `## Open issues` section** — do not edit the upstream file.
+
+Use Bash only for read-only inspection (`cat`, `ls`, `grep`, `find`, `head`, `tail`). Do not run scripts that have side effects on the filesystem outside `docs/claude/architecture.md` and `decisions.md`.

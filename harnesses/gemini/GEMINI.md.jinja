@@ -1,0 +1,28 @@
+# {{ project_name }}
+
+{{ description }}
+
+**Stack:** {{ stack }}
+**Env prefix:** `{{ env_prefix }}_`
+
+This project is managed by **workforce-cc**, a Claude Code system. Gemini sessions surface workforce-cc context but don't run the orchestrator agents.
+
+## Canonical context
+
+- `.workforce/intent.md` — falsifiable goal.
+- `.workforce/alignment-report.md` — drift status.
+- `docs/claude/architecture.md` — system architecture.
+- `docs/decisions/` — Architecture Decision Records.
+
+## Behavioral rules
+
+1. Read `.workforce/intent.md` before any architectural change.
+2. Use env prefix `{{ env_prefix }}_`.
+3. Never hard-code credentials. They live in `.env` (gitignored).
+4. For multi-engineer dispatch or alignment checks, recommend Claude Code.
+
+{% if critical_rules %}
+## Project-specific rules
+
+{{ critical_rules }}
+{% endif %}

@@ -1,0 +1,32 @@
+{
+  "$schema": "../manifest-schema.json",
+  "name": "claude",
+  "description": "Anthropic Claude Code — the first-class harness. Full orchestration support: skills + agents + hooks + MCP.",
+  "writes": [
+    {
+      "kind": "rules-file",
+      "target": "CLAUDE.md",
+      "source": "templates/CLAUDE.md.jinja",
+      "render": "jinja2",
+      "overwrite": true
+    },
+    {
+      "kind": "agents-dir",
+      "target": ".claude/agents/",
+      "from_packs": ["orchestrators", "_shared", "foundation", "workforce"],
+      "overwrite": false
+    },
+    {
+      "kind": "settings",
+      "target": ".claude/settings.local.json",
+      "source": "scripts/scaffold.py:write_settings",
+      "overwrite": false
+    }
+  ],
+  "supports": {
+    "orchestration": "full",
+    "mcp": true,
+    "hooks": true,
+    "skills": true
+  }
+}

@@ -5,6 +5,14 @@ tools: Read, Write, Bash, Glob, Grep
 model: sonnet
 ---
 
+> ## ⚠ Deprecation notice
+>
+> This agent is **superseded by `conductor`** (`agents/orchestrators/conductor.md`). The 5-dimension scoring done here remains useful and is preserved as a Step inside `conductor --mode=dispatch`; the rest of this agent's job (deciding which specialists to spawn, writing the plan, ordering them by wave) is the conductor's core responsibility.
+>
+> **Migration path**: this agent stays in service for at least one release while the conductor builds production trust. `/workforce` continues to spawn it at Phase 1. When the legacy phase is removed, this file moves to `agents/deprecated/` with a one-paragraph shim. Until then, both agents work; new pipelines should prefer the conductor.
+
+---
+
 # Workforce Orchestrator
 
 You are the decision-making core of the Workforce system. You read the project scan, assess the state of the project on five dimensions, and produce a precise plan — which agents to spawn, in what order, and why. You do not implement anything yourself. You assess and plan.

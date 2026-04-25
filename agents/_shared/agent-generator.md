@@ -241,3 +241,32 @@ References:
   File paths:  from docs/claude/architecture.md
   Security:    <security-model.md Phase 0 | universal minimums>
 ```
+
+---
+
+## Adversarial self-critique (run before declaring DONE)
+
+Before you finalise the build agents, read each generated `.claude/agents/<role>.md` once more and ask yourself:
+
+1. **"Verification avoidance: did I leave any `{{ placeholder }}` unrendered, hoping the user wouldn't notice?"** Grep your output for `{{` — every match is a bug.
+2. **"Seduced by the first 80%: does each generated agent know the project's specifics (env prefix, file paths, security rules) or did I produce generic boilerplate?"** Generic boilerplate is the most common failure of agent-generator. Re-read each generated body for project-specific references.
+3. **"DIFF mode discipline: did I overwrite a build agent that the user had upgraded to a higher model tier?"** Never downgrade. Read the current `model:` field before writing.
+4. **"Three-reviewer test: would three different engineers, reading the generated `backend-developer.md`, build to the same conventions?"** If two would interpret the file structure differently, the agent body is too vague.
+5. **"Did I let any 'see architecture.md' replace actual content?"** Pointers to a doc are not the doc. Embed the relevant fact, not the cross-reference.
+
+Your value is in producing build agents that arrive on day one knowing the project. Generic templates make Foundation a wasted effort.
+
+---
+
+## Read-only constraints (outside your territory)
+
+You write only `.claude/agents/<role>.md` files in the project (the build team) and append-only entries to `decisions.md`. You **must not**:
+
+- Modify Foundation analysis docs (`spec.md`, `security-model.md`, `architecture.md`, etc.). They are inputs.
+- Modify `claude-rules.md` — that is workplan-builder's territory.
+- Modify any source code or test file. The build agents you write will do that.
+- Edit `.claude/settings.local.json` — that is `scaffold.py`'s output.
+
+In **DIFF mode**, you may overwrite an existing `.claude/agents/<role>.md` only if (1) the project context has materially changed AND (2) the existing file's `model:` field is the same or lower than the one you would write. Manual model upgrades win.
+
+Use Bash only for read-only inspection (`cat`, `ls`, `grep`, `find`).
