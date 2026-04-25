@@ -127,6 +127,59 @@ The roles live in [`agents/orchestrators/`](agents/orchestrators/) and the share
 
 ---
 
+## Two execution modes — and which one you actually triggered
+
+workforce-cc dispatches engineer agents in **two different ways** depending on whether you're inside a tmux session. They produce visibly similar conversations but have very different runtime properties.
+
+### Mode A — single-session sub-agents (default, no tmux)
+
+When you run `/foundation` or `/workforce` without tmux, Claude Code's built-in `Agent` tool fans out **sub-agents inside your current session**. The conductor and N engineers all run as part of one Claude Code conversation.
+
+- **Context**: all sub-agents share **one 1M-token window** with your main session.
+- **Model / settings**: every sub-agent inherits whatever your session is using.
+- **Comm**: sub-agents return text to the parent agent within Claude's runtime.
+- **Good for**: small-to-medium projects where one 1M window is enough budget.
+- **Failure mode**: large projects (~70+ tasks, many parallel tracks) exhaust context before integration.
+
+This is what most users get out of the box. No special setup needed; the `Agent` tool ships with Claude Code.
+
+### Mode B — multi-terminal, separate `claude` processes (tmux required)
+
+When you launch `pipeline_runner.py dispatch-wave` from inside a tmux session, the conductor's `dispatch.md` is parsed and **each engineer is spawned as its own `claude` process** in a separate tmux window.
+
+- **Context**: each engineer gets its **own** 1M-token window (separate API session).
+- **Model / settings**: each engineer can run on a different model, with its own permission mode (`default | plan | auto | bypass`), its own hooks.
+- **Comm**: engineers communicate **only** via files on disk — `runs/<ts>/<engineer>/approach.md` (plan-before-action), the declared outputs (e.g. `architecture.md`), and `status/<engineer>.json` (`RUNNING | BLOCKED | DONE`). The conductor polls the status files; nothing happens in conversation.
+- **Good for**: large projects, long-running runs, debugging an engineer that misbehaves (its terminal is right there to inspect).
+- **Failure mode**: extra setup (tmux must already be running); harder to follow the whole arc visually because attention is split across windows.
+
+### How to trigger each mode
+
+| You want | What to run |
+|---|---|
+| Mode A (sub-agents in your session) — most users | `claude` → `/foundation` or `/workforce`. Done. |
+| Mode B (real separate terminals) — large projects | `tmux new -s workforce` first, then `claude` → `/foundation` or `/workforce`. After the conductor writes `.workforce/dispatch.md`, run `python3 ~/.foundation-path/scripts/pipeline_runner.py dispatch-wave --from .workforce/dispatch.md --wave 1 --mode tmux` from any tmux window. New windows open per engineer. |
+| Mode B headless (no live windows) | `pipeline_runner.py dispatch-wave --mode background` — engineers run as `nohup claude --print` processes; logs land in `.tmp/track-<engineer>.log`. |
+| Just print the spawn commands | `pipeline_runner.py dispatch-wave --mode print` — it tells you what to copy into separate terminals manually. |
+
+### How to verify which mode you're in
+
+Run, in another window of the same project:
+
+```bash
+python3 ~/.foundation-path/scripts/pipeline_runner.py status --project-dir .
+```
+
+If the command finds `.workforce/status/<engineer>.json` files, you're in Mode B — those status files only get written by separately-spawned `claude` processes. If the directory is empty (or `.workforce/` doesn't exist), you ran Mode A: the sub-agents lived inside your session and never wrote per-engineer status to disk.
+
+### Why we built it both ways
+
+Mode A is what Claude Code gives you natively — fine for small projects. Mode B is the escape hatch for projects where one shared 1M window isn't enough budget, or where you want each engineer's reasoning visible in real time.
+
+If you ran `/foundation` recently and didn't have tmux open, **you were in Mode A**. The visible "spawning architect, security-analyst, …" output is real — the system did fan out, integrate, and produce artifacts — but every sub-agent shared the same 1M context with your main session. For your next run, if the project has more than ~30 tasks or multiple long-context dependencies (architecture + spec + workplan all need to be considered together), try Mode B.
+
+---
+
 ## Repository layout
 
 ```
