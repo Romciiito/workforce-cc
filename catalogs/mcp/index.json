@@ -1,0 +1,99 @@
+{
+  "$schema": "../mcp-schema.json",
+  "description": "Curated MCP server configurations recommended for workforce-cc projects. Add an entry to a project's .claude/settings.local.json (mcpServers section) to install. Patterns of categorisation and env-var placeholders follow the affaan-m/everything-claude-code mcp-servers.json shape.",
+  "version": 1,
+  "servers": [
+    {
+      "id": "github",
+      "category": "vcs",
+      "summary": "Read GitHub repos, issues, PRs, and Actions runs.",
+      "stacks": [],
+      "config": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-github"],
+        "env": {
+          "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+        }
+      },
+      "use_when": [
+        "Engineer needs to read issue/PR descriptions or recent commit history.",
+        "Workforce audit references GitHub-tracked tasks."
+      ]
+    },
+    {
+      "id": "postgres",
+      "category": "database",
+      "summary": "Query a PostgreSQL database read-only. Useful when the architect or stack-selector needs to inspect a real schema.",
+      "stacks": ["python-fastapi", "python-fastapi-nextjs", "fullstack-desktop", "microservices"],
+      "config": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-postgres", "${DATABASE_URL}"],
+        "env": {}
+      },
+      "use_when": [
+        "Validating a data-model proposal against an existing DB.",
+        "Gap-analyst checking that documented schemas match reality."
+      ]
+    },
+    {
+      "id": "filesystem-extra",
+      "category": "filesystem",
+      "summary": "Read filesystems outside the project directory — e.g. shared design assets, platform docs, neighbour repos.",
+      "stacks": [],
+      "config": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-filesystem", "${EXTRA_FILESYSTEM_ROOT}"],
+        "env": {}
+      },
+      "use_when": [
+        "Architecture decisions reference a shared design system or sibling repo.",
+        "Avoid: when project files are sufficient — keep blast radius small."
+      ]
+    },
+    {
+      "id": "memory",
+      "category": "memory",
+      "summary": "Persistent KV-style memory across sessions. Conductor can record long-running run state.",
+      "stacks": [],
+      "config": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-memory"],
+        "env": {}
+      },
+      "use_when": [
+        "Multi-day projects where session restart loses orchestration state.",
+        "Avoid: short single-session runs — telemetry.jsonl + .workforce/runs/ already suffice."
+      ]
+    },
+    {
+      "id": "sequential-thinking",
+      "category": "reasoning",
+      "summary": "Structured multi-step reasoning aid for the conductor and alignment-guard.",
+      "stacks": [],
+      "config": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+        "env": {}
+      },
+      "use_when": [
+        "Complex multi-engineer dispatches where the conductor needs to reason through dependencies.",
+        "Alignment guard cross-check work that has many findings to score."
+      ]
+    },
+    {
+      "id": "fetch",
+      "category": "web",
+      "summary": "Fetch a URL and parse to text/markdown. Lighter than full WebSearch.",
+      "stacks": [],
+      "config": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-fetch"],
+        "env": {}
+      },
+      "use_when": [
+        "Market-researcher needs to read a specific competitor page.",
+        "Architect wants to read upstream library docs."
+      ]
+    }
+  ]
+}

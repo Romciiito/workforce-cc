@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "workforce-cc MCP catalog",
+  "description": "Schema for catalogs/mcp/index.json — declares MCP server configurations recommended for workforce-cc projects.",
+  "type": "object",
+  "required": ["servers"],
+  "properties": {
+    "version": {"type": "integer"},
+    "description": {"type": "string"},
+    "servers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "category", "summary", "config"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "description": "Stable identifier; unique within the MCP catalog."
+          },
+          "category": {
+            "type": "string",
+            "enum": ["vcs", "database", "filesystem", "memory", "reasoning", "web", "monitoring", "auth", "queue", "other"]
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 280
+          },
+          "stacks": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Stacks this server is specifically recommended for. Empty = applicable to any stack."
+          },
+          "config": {
+            "type": "object",
+            "description": "MCP server configuration as it would appear in .claude/settings.local.json's mcpServers map.",
+            "properties": {
+              "command": {"type": "string"},
+              "args": {"type": "array", "items": {"type": "string"}},
+              "env": {
+                "type": "object",
+                "additionalProperties": {"type": "string"},
+                "description": "Env vars passed to the MCP server. Values may be ${VAR_NAME} placeholders to be resolved from the project's environment."
+              }
+            }
+          },
+          "use_when": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Bullet list of when to install this server (and optionally when not to)."
+          }
+        }
+      }
+    }
+  }
+}
