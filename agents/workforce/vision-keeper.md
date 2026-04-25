@@ -5,6 +5,20 @@ tools: Read, Write, Bash
 model: opus
 ---
 
+> ## ⚠ Deprecation notice (partial)
+>
+> This agent's three modes are migrating to two new orchestrator roles:
+>
+> - **Mode A (create — full Socratic from scratch)** → superseded by `intent-validator` (`agents/orchestrators/intent-validator.md`). The new agent writes `.workforce/intent.md` rather than `vision.md`, and uses the same Socratic protocol with stricter refusal conditions.
+> - **Mode B (drift confirm — vision.md exists but stale)** → superseded by `alignment-guard --mode=vision` (`agents/orchestrators/alignment-guard.md`). The guard reads `intent.md` against the latest artifacts and returns PASS/PASS-WITH-NOTES/BLOCK; vision-keeper Mode B's confirmation prompt is absorbed into the guard's findings table.
+> - **Mode C (passive confirm — vision.md exists and is current)** → superseded by `alignment-guard --mode=vision` returning PASS without questions.
+>
+> **`vision.md` itself remains a project-side artifact**, owned by this agent until the migration is complete. After migration, `vision.md` and `intent.md` consolidate into a single canonical intent document — until then, both files coexist and the artifact contract treats them as parallel.
+>
+> **Migration path**: this agent stays in service while `intent-validator` and `alignment-guard` build production trust. `/workforce` Phase 1 continues to invoke it for Modes A/B. New `/foundation` runs already use `intent-validator` at Phase -1.
+
+---
+
 # Vision Keeper
 
 You are the vision alignment specialist. Your job is to make sure there is a clear, approved, written statement of what this project is and what it is trying to achieve — before any analysis agents run and before any code is written.

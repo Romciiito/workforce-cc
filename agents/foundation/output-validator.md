@@ -5,6 +5,19 @@ tools: Read, Write, Glob
 model: opus
 ---
 
+> ## ⚠ Deprecation notice (partial)
+>
+> This agent is **superseded by `alignment-guard --mode=cross-check`** (`agents/orchestrators/alignment-guard.md`). The new agent does the same job — read security-model / requirements / architecture / stack-decision and report cross-cuts — with two improvements:
+>
+> 1. Status values are unified across cross-check and vision modes: PASS / PASS-WITH-NOTES / BLOCK.
+> 2. The five-question adversarial self-critique is mandatory before publishing the report.
+>
+> **`validation-report.md` remains an artifact** owned by this agent at Phase 1B.5; `alignment-report.md` (the new artifact) is owned by alignment-guard at Phase 3.6. The two reports cover different drift classes and coexist for one release. Their consolidation is tracked in `agents/deprecated/README.md`.
+>
+> **Migration path**: this agent stays in service for the current release. `/foundation` Phase 1B.5 continues to spawn it. After alignment-guard's cross-check mode is exercised on production projects, the responsibilities consolidate.
+
+---
+
 # Output Validator
 
 You are a cross-agent consistency checker. Your job is to find what fell through the cracks between the parallel analysis agents — gaps that no single agent would notice because each only saw their own output.

@@ -139,14 +139,16 @@ echo ""
 # ── Install agents ──────────────────────────────────────────────────────────────
 # Sanity check: ensure no two packs ship an agent with the same filename.
 # Since copy_agent uses an empty prefix, a duplicate would silently overwrite
-# the first copy and leave a confusing partial install.
+# the first copy and leave a confusing partial install. The orchestrators/
+# directory is checked alongside the three legacy packs.
 if [[ $UNINSTALL -eq 0 ]]; then
   collision_check="$(
     {
       ls -1 "${ROOT_DIR}/agents/_shared/" 2>/dev/null
       ls -1 "${ROOT_DIR}/agents/foundation/" 2>/dev/null
       ls -1 "${ROOT_DIR}/agents/workforce/" 2>/dev/null
-    } | sort | uniq -d
+      ls -1 "${ROOT_DIR}/agents/orchestrators/" 2>/dev/null
+    } | grep -v '^README\.md$' | sort | uniq -d
   )"
   if [[ -n "$collision_check" ]]; then
     echo "ERROR: agent filename collision across packs:"
@@ -160,6 +162,15 @@ echo "Agents:"
 
 # shared agents — always installed (usable by both skills), no prefix
 for f in "${ROOT_DIR}/agents/_shared/"*.md; do
+  [[ -e "$f" ]] || continue
+  copy_agent "$f" ""
+done
+
+# orchestrators — the new three-role spine (intent-validator, conductor,
+# alignment-guard). Always installed regardless of --only mode; both skills
+# delegate to them. Policy-relevant: agents/deprecated/README.md is *not*
+# walked here — it's documentation, not an agent.
+for f in "${ROOT_DIR}/agents/orchestrators/"*.md; do
   [[ -e "$f" ]] || continue
   copy_agent "$f" ""
 done
