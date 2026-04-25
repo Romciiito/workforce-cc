@@ -199,6 +199,7 @@ def render_envelope(payload, project: Optional[str] = None) -> str:
         "deadline_min": int(payload.deadline_min),
         "retry_tier": payload.retry_tier.value,
         "shared_locks": list(payload.shared_locks),
+        "permission_mode": payload.permission_mode.value,
         "project": project or "this project",
     }
 
@@ -221,11 +222,13 @@ def _plaintext_envelope(ctx: dict) -> str:
     inputs_lines = "\n".join(f"  - {f}" for f in ctx["inputs"]) or "  - (none)"
     outputs_lines = "\n".join(f"  - {f}" for f in ctx["outputs"]) or "  - (none)"
     locks_lines = "\n".join(f"  - {f}" for f in ctx["shared_locks"]) or "  - (none)"
+    permission_mode = ctx.get("permission_mode", "default")
     return (
         f"You are the {ctx['engineer']} engineer for {ctx['project']}.\n\n"
-        f"Run id:       {ctx['run_id']}\n"
-        f"Retry tier:   {ctx['retry_tier']}\n"
-        f"Deadline:     {ctx['deadline_min']} minutes\n\n"
+        f"Run id:           {ctx['run_id']}\n"
+        f"Retry tier:       {ctx['retry_tier']}\n"
+        f"Permission mode:  {permission_mode}\n"
+        f"Deadline:         {ctx['deadline_min']} minutes\n\n"
         f"Inputs:\n{inputs_lines}\n\n"
         f"Outputs (your declared territory):\n{outputs_lines}\n\n"
         f"Shared locks (read-only):\n{locks_lines}\n\n"

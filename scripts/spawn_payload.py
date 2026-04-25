@@ -105,6 +105,46 @@ class State(enum.Enum):
         return cls(str(value))
 
 
+class PermissionMode(enum.Enum):
+    """How aggressively the engineer is allowed to act on the project.
+
+    Pattern from the leaked Claude Code source (its own permission system
+    has analogous modes). Fresh implementation; semantics defined here.
+
+      DEFAULT — engineer follows the envelope's territory + read-only
+                constraints exactly as written. Asks before any tool call
+                that's outside the declared territory or has side effects
+                beyond the declared outputs.
+      PLAN    — engineer must NOT execute; only produces plan-level
+                artifacts (approach.md + the declared output as a plan,
+                not as code/config). Useful for 'figure out what to do'
+                runs where execution comes later.
+      AUTO    — engineer is empowered to execute within the envelope
+                without asking. Skip the 'are you sure' confirmations.
+                Use when you've reviewed the dispatch.md contract and
+                trust the engineer's stated approach.
+      BYPASS  — engineer is allowed to act outside the envelope's
+                territory if it determines that's necessary to complete
+                the task. Document each excursion in approach.md and
+                BLOCKED.md if applicable. Highest-trust mode; reserved
+                for senior debugging or exploratory tasks where the
+                operator is reviewing every diff.
+    """
+
+    DEFAULT = "default"
+    PLAN = "plan"
+    AUTO = "auto"
+    BYPASS = "bypass"
+
+    @classmethod
+    def parse(cls, value: Any) -> "PermissionMode":
+        if isinstance(value, cls):
+            return value
+        if value is None:
+            return cls.DEFAULT
+        return cls(str(value))
+
+
 @dataclasses.dataclass
 class SpawnPayload:
     """The contract the conductor passes to every engineer terminal."""
@@ -117,6 +157,7 @@ class SpawnPayload:
     deadline_min: int = 30
     retry_tier: RetryTier = RetryTier.NONE
     shared_locks: list[str] = dataclasses.field(default_factory=list)
+    permission_mode: PermissionMode = PermissionMode.DEFAULT
 
     def to_dict(self) -> dict:
         return {
@@ -128,6 +169,7 @@ class SpawnPayload:
             "deadline_min": int(self.deadline_min),
             "retry_tier": self.retry_tier.value,
             "shared_locks": list(self.shared_locks),
+            "permission_mode": self.permission_mode.value,
         }
 
     def to_json(self, indent: Optional[int] = None) -> str:
@@ -149,6 +191,7 @@ class SpawnPayload:
             deadline_min=int(data.get("deadline_min", 30)),
             retry_tier=RetryTier.parse(data.get("retry_tier")),
             shared_locks=list(data.get("shared_locks", [])),
+            permission_mode=PermissionMode.parse(data.get("permission_mode")),
         )
 
     @classmethod
