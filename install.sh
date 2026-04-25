@@ -66,7 +66,12 @@ PROFILE_HARNESSES=""
 if [[ -n "$PROFILE" ]]; then
   PROFILE_FILE="${ROOT_DIR}/profiles/${PROFILE}.json"
   if [[ ! -f "$PROFILE_FILE" ]]; then
-    echo "ERROR: profile not found: ${PROFILE}. Files in profiles/ — $(ls "${ROOT_DIR}/profiles/" 2>/dev/null | grep '\.json$' | tr '\n' ' ')"
+    available_profiles=""
+    for pf in "${ROOT_DIR}/profiles/"*.json; do
+      [[ -e "$pf" ]] || continue
+      available_profiles+="$(basename "$pf") "
+    done
+    echo "ERROR: profile not found: ${PROFILE}. Files in profiles/ — ${available_profiles}"
     exit 1
   fi
   if ! command -v python3 &>/dev/null; then
@@ -111,7 +116,12 @@ fi
 if [[ $UNINSTALL -eq 0 ]]; then
   for h in $EFFECTIVE_HARNESSES_STR; do
     if [[ ! -d "${ROOT_DIR}/harnesses/${h}" ]]; then
-      echo "ERROR: unknown harness: ${h}. Available: $(ls "${ROOT_DIR}/harnesses/" 2>/dev/null | grep -v '^README' | grep -v '\.json$' | tr '\n' ' ')"
+      available_harnesses=""
+      for hd in "${ROOT_DIR}/harnesses/"*/; do
+        [[ -d "$hd" ]] || continue
+        available_harnesses+="$(basename "$hd") "
+      done
+      echo "ERROR: unknown harness: ${h}. Available: ${available_harnesses}"
       exit 1
     fi
   done
@@ -293,7 +303,9 @@ if [[ $UNINSTALL -eq 0 ]]; then
   )"
   if [[ -n "$collision_check" ]]; then
     echo "ERROR: agent filename collision across packs:"
-    echo "$collision_check" | sed 's/^/  /'
+    while IFS= read -r line; do
+      echo "  $line"
+    done <<< "$collision_check"
     echo "Resolve by renaming the duplicates, then re-run install.sh."
     exit 1
   fi
