@@ -315,10 +315,8 @@ $ claude
 # Conductor writes the dispatch
 claude --print "/conductor --mode=dispatch"
 
-# Spawn each engineer in its own terminal (envelope by default)
-python3 scripts/pipeline_runner.py spawn --track architect --project my-saas
-python3 scripts/pipeline_runner.py spawn --track security-analyst --project my-saas
-python3 scripts/pipeline_runner.py spawn --track requirements-engineer --project my-saas
+# Fire an entire wave (parses dispatch.md, spawns each engineer in its own terminal)
+python3 scripts/pipeline_runner.py dispatch-wave --from .workforce/dispatch.md --wave 1
 
 # Watch progress
 python3 scripts/pipeline_runner.py status --expect architect,security-analyst,requirements-engineer
@@ -329,6 +327,8 @@ claude --print "/alignment-guard --mode=cross-check"
 # Then integrate
 claude --print "/conductor --mode=integrate"
 ```
+
+For the full multi-terminal walkthrough — including BLOCKED-engineer handling, audit-trail layers, and troubleshooting — see [`docs/running-a-session.md`](docs/running-a-session.md).
 
 ---
 
