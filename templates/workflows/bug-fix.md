@@ -27,26 +27,65 @@ Before touching any code:
 
 ---
 
-### 2. Root cause analysis
+### 2. Root cause analysis — write an execution trace
 
-Work from the symptom inward:
+Work from the symptom inward and produce a written **execution trace** before any fix discussion. This is the single highest-leverage practice for bug fixing — it forces you to find the actual cause instead of patching the first thing that looks suspicious. Pattern borrowed from `agent-dispatch`'s execution-trace methodology.
 
-1. **Read the error.** Full stack trace > last line. Find the first frame in project code (skip library internals).
-2. **Trace the data flow.** Follow the request/event from entry point (route / event handler / CLI command) to the failing line.
-3. **Check recent changes.** Run `git log --oneline -20` and `git diff <suspect-commit>` — most bugs live close to recent edits.
-4. **Check the logs.** Structured logs with correlation IDs often show what happened before the crash.
-5. **Isolate assumptions.** State the assumption you think is wrong, then verify it with a targeted read of the relevant code.
+#### The trace shape
 
-Do not write a fix until you can state the root cause in one sentence.
+Every bug fix produces a trace with five fields:
+
+```markdown
+# Trace — <one-line bug summary>
+
+## Entry point
+<the route, CLI command, event handler, or test that triggers the bug — file:line>
+
+## Function call chain
+1. <file:line>  — <what this function does>
+2. <file:line>  — <what this function does>
+3. <file:line>  — <where state mutates / decision is made>
+   ...
+
+## Root cause
+<one sentence — the specific thing that's wrong and why. NOT a symptom, the cause.>
+
+## Fix site
+<file:line — the single line or block that gets changed>
+
+## Verification
+<the literal command that proves the fix:  `pytest tests/<path>::test_<name> -x`>
+```
+
+If you cannot fill in any of those five fields, you have not yet found the root cause. Keep tracing.
+
+#### How to build the trace
+
+1. **Read the error.** Full stack trace > last line. Find the first frame in project code (skip library internals). Write that line as the bottom of the call chain.
+2. **Walk up the stack.** For each frame, read the function and write a one-line summary of what it does. Continue until you reach the entry point (route / event / CLI). Now you have the chain top-to-bottom.
+3. **Identify the inversion.** Somewhere in the chain a function does the wrong thing — produces wrong output for valid input, accepts invalid input, branches incorrectly, or fails to handle a case. Mark it. That's the **root cause**.
+4. **Distinguish symptom from cause.** "Returns null" is a symptom. "Doesn't initialise the cache before first read" is a cause. The cause is what you fix.
+5. **Identify the fix site.** Often the same line as the root cause; sometimes one frame up (e.g. caller passes wrong arg). Write the exact `file:line`.
+6. **Choose the verification.** What command will prove the fix landed and the bug is gone? Usually a specific failing test name, sometimes a manual reproduction step. Write the literal command.
+
+#### Why traces matter
+
+- **They prevent symptom-patching.** A 5-frame trace forces you to look at the chain, not just the line where the exception was raised.
+- **They produce a regression test for free.** The verification field IS the regression test command.
+- **They survive context resets.** A new engineer reading the trace can jump in mid-fix without re-reading the whole codebase.
+- **They make code review trivial.** The reviewer reads the trace, then the diff, and asks "does the diff change the fix site to address the root cause?"
+
+Do not write a fix until the trace is complete.
 
 ---
 
 ### 3. Write a regression test first
 
-Before fixing, write a test that:
+The trace's `## Verification` field tells you what test name to write. Before fixing, write a test that:
 - Reproduces the bug (it must fail on the current code)
 - Will pass once the fix is in place
 - Is as narrow as possible (unit test preferred; integration test if the bug requires I/O)
+- Matches the verification command from your trace exactly
 
 ```python
 # Example shape
@@ -95,12 +134,18 @@ If the bug was not in the workplan but reveals a gap (missing validation, missin
 
 ### 7. Open PR
 
+Paste the execution trace into the PR body — it's already in the right shape and saves the reviewer ten minutes of digging.
+
 ```
 gh pr create \
   --title "fix: <one-line description of what was wrong>" \
   --body "$(cat <<'EOF'
-## Root cause
-<One sentence: what was wrong and why>
+## Trace
+- **Entry point**: <file:line>
+- **Call chain**: <file:line> → <file:line> → <file:line>
+- **Root cause**: <one sentence>
+- **Fix site**: <file:line>
+- **Verification**: `<the literal test command>`
 
 ## Fix
 <One sentence: what the change does>
