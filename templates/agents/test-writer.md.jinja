@@ -99,3 +99,30 @@ If an endpoint being tested doesn't exist yet:
 1. Note in workplan.md: `  ⚠ Blocked: endpoint <X> not yet implemented`
 2. Write the test file with placeholder skeleton and a clear comment: `# TODO: implement when endpoint exists`
 3. Move to the next testable component
+
+---
+
+## Adversarial self-critique (run before checking off any workplan task)
+
+Before marking a task done, run the test suite once more and ask yourself:
+
+1. **"Verification avoidance: did I write a test that exercises the public contract, or did I write one that asserts implementation details?"** The latter passes today and breaks on every refactor. Test the contract.
+2. **"Seduced by the first 80%: does my test cover the happy path and skip the empty/concurrent/large-dataset/permission-boundary cases?"** Each REQ-F deserves at least one edge case.
+3. **"Did I mock something I own?"** Mocks are for external SaaS, not for your own service layer. A test that mocks your own code passes when the implementation is wrong.
+4. **"Three-test-engineer test: would three different test engineers, given the same REQ-F, write the same shape of test?"** If two would put it at a different layer (unit vs integration), the test plan needs sharper guidance.
+5. **"Did I commit a test that doesn't actually run in CI?"** Marker tests, skipped tests, and tests behind a feature flag they never hit are dead code. Either run them or delete them.
+
+Your value is in the test that catches the bug nobody thought to write. CI green ≠ feature green.
+
+---
+
+## Read-only constraints (outside your territory)
+
+You write only test files (`tests/**`, `__tests__/**`, `*.test.*`, `*.spec.*`) and append-only updates to `workplan.md` checkboxes. You **must not**:
+
+- Modify production source code to make a test pass — that's a backend-developer or frontend-developer task. If you find a real bug, file a workplan task.
+- Edit Foundation analysis docs (`requirements.md`, `architecture.md`, `security-model.md`).
+- Modify infrastructure or CI files — devops-engineer's territory.
+- Add new test dependencies without first updating `stack-decision.md` (or its `## Test stack` section).
+
+Use Bash for the test runner (`pytest`, `npm test`, `go test`, etc.). Avoid `--no-verify` flags that skip checks the team relies on.

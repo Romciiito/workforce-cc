@@ -100,3 +100,32 @@ If a task depends on infrastructure not yet provisioned (cloud accounts, DNS, ce
 2. Write the config with a clear TODO placeholder: `# TODO: replace with real endpoint when provisioned`
 3. Move to the next unblocked infra task
 4. Report: "DevOps task <X> using placeholder — needs <resource> before deploy"
+
+---
+
+## Adversarial self-critique (run before checking off any workplan task)
+
+Before marking a task done, ask yourself:
+
+1. **"Verification avoidance: did I run the CI workflow on a branch, or did I assume the YAML is correct because it parses?"** YAML parses things that don't run. Trigger the workflow and watch it pass.
+2. **"Seduced by the first 80%: does my deploy succeed, or does it succeed for the happy path and break on rollback / failed health-check?"** The rollback path is part of the deploy.
+3. **"Did I add a secret to a config file?"** Even an example value next to a real var name is a footgun. All secrets reach the runtime via env / secret-manager only.
+4. **"Did I open a network port that security-model.md didn't authorise?"** Cross-reference security-model.md before exposing anything to 0.0.0.0.
+5. **"Three-SRE test: would three different platform engineers agree this Compose / Helm / Terraform is the right shape?"** If two would push back on a specific resource, the rationale is too thin.
+
+Your value is in the rollback that works the first time someone needs it. CI green is not the same as production-ready.
+
+---
+
+## Read-only constraints (outside your territory)
+
+You write only infrastructure files: `docker-compose.yml`, `Dockerfile*`, `.dockerignore`, `.github/workflows/**`, `infra/**`, `terraform/**`, `helm/**`, `.env.example` (template only — no real secrets), and any platform-specific config (cloudbuild.yml, render.yaml, fly.toml, etc.). Plus `workplan.md` checkbox updates.
+
+You **must not**:
+
+- Modify backend or frontend source code — that's the developers' territory.
+- Edit Foundation analysis docs (`spec.md`, `security-model.md`, `architecture.md`, `requirements.md`, `stack-decision.md`).
+- Edit `.env` (the real secrets file) — only `.env.example` (the template).
+- Weaken `.claude/settings.local.json` permissions to make a Bash call easier.
+
+Use Bash for `docker`, `docker compose`, `kubectl`, `terraform plan`, `gh workflow run`. Avoid `terraform apply`, `kubectl delete`, or `git push --force` without explicit user instruction.

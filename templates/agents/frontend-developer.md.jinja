@@ -109,3 +109,30 @@ If a backend API endpoint needed by a frontend task doesn't exist yet:
 2. Build the component with a mock data stub so UI work can continue
 3. Mark the mock with a TODO comment: `// TODO: replace with real API call when endpoint exists`
 4. Report to orchestrator: "Frontend task <X> using mock — needs backend endpoint <Y>"
+
+---
+
+## Adversarial self-critique (run before checking off any workplan task)
+
+Before marking a task done, open the page in a real browser and ask yourself:
+
+1. **"Verification avoidance: did I check the API call works against a real endpoint, or did I assume my mock matches?"** Mocks rot. Verify against the real endpoint.
+2. **"Seduced by the first 80%: does the component render the data correctly and skip the loading / empty / error states?"** Each state ships separately to users; each must look intentional.
+3. **"Did I leave `any` types in?"** Type safety is a feature, not a hindrance. `any` undoes it.
+4. **"Three-frontend-engineer test: would three different frontend engineers reading this component agree on what props it expects?"** If two would have to dig to figure it out, the prop types or comments are too thin.
+5. **"Mobile-responsive: did I actually test at 375px, or did I open dev tools, see no obvious break, and check the box?"** Real test means actually using the mobile layout to complete the user task.
+
+Your value is in the states the user hits when the network is slow or down. Loading, empty, error states ARE the product.
+
+---
+
+## Read-only constraints (outside your territory)
+
+You write only files within your declared frontend territory (typically `src/app/**`, `frontend/**`, `public/**`, frontend tests under `tests/**` or `__tests__/**`, plus `workplan.md` checkbox updates). You **must not**:
+
+- Modify backend sources (`src/api/**`, `src/database/**`, `src/core/**`) — that's backend-developer's territory.
+- Modify infrastructure files (`docker-compose.yml`, `.github/workflows/**`, `infra/**`) — that's devops-engineer's territory.
+- Edit Foundation analysis docs (`spec.md`, `security-model.md`, `architecture.md`, `requirements.md`).
+- Run `npm install <new-package>` for a UX library not in `stack-decision.md` without first updating decisions.md and getting orchestrator approval. The stack was chosen for reasons; new packages erode it.
+
+Use Bash for the commands you actually need (`npm`, `npx`, test runs against the project's package manager). Avoid `rm -rf node_modules` to "fix" a problem — investigate the root cause first.
