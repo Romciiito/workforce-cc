@@ -356,6 +356,31 @@ def cmd_render_envelope(payload_path: Path, project: Optional[str]) -> int:
     return 0
 
 
+def synthesise_payload_for_track(track: str, project: str):
+    """Build a sensible SpawnPayload from just a track name + project label.
+
+    Used by `spawn` when invoked with the envelope prompt-style. Keeps the
+    legacy track-based UX (one-flag spawn) but produces an envelope-shaped
+    prompt for the engineer terminal. For richer dispatches, the conductor
+    writes a full payload JSON and uses `spawn-payload` instead.
+    """
+    sp = _load_spawn_payload_module()
+    run_id = sp.new_run_id()
+    return sp.SpawnPayload(
+        run_id=run_id,
+        engineer=track,
+        # Sensible defaults: every track-based engineer reads the workplan
+        # and writes against decisions.md. Specific in/out lists belong in
+        # a dispatch.md, not a one-shot track spawn.
+        inputs=["workplan.md"],
+        outputs=["decisions.md"],
+        status_file=f".workforce/status/{track}.json",
+        deadline_min=30,
+        retry_tier=sp.RetryTier.NONE,
+        shared_locks=["workplan.md"],
+    )
+
+
 def cmd_spawn_payload(payload_path: Path, mode: str, project: Optional[str]) -> int:
     """Spawn an engineer terminal using a SpawnPayload JSON file (envelope-rendered)."""
     sp = _load_spawn_payload_module()
@@ -387,11 +412,26 @@ def main() -> None:
     p_plan.add_argument("--max-tracks", type=int, default=4)
     p_plan.add_argument("--project", default="this project")
 
-    p_spawn = sub.add_parser("spawn", help="Spawn one track terminal (legacy)")
+    p_spawn = sub.add_parser(
+        "spawn",
+        help="Spawn one engineer terminal (envelope-by-default; --legacy-prompt for the old one-liner)",
+    )
     p_spawn.add_argument("--track", required=True)
     p_spawn.add_argument("--project", default="this project")
     p_spawn.add_argument("--mode", default="auto",
                          choices=["auto", "tmux", "background", "print"])
+    p_spawn.add_argument(
+        "--prompt-style",
+        default="envelope",
+        choices=["envelope", "legacy"],
+        help="envelope (default): render templates/agents/_envelope.md.jinja with a synthesised payload. "
+             "legacy: the pre-Chunk-11 one-liner from opening_prompt().",
+    )
+    p_spawn.add_argument(
+        "--legacy-prompt",
+        action="store_true",
+        help="Shorthand for --prompt-style=legacy.",
+    )
 
     # New subcommands (Chunk 4) — additive; do not change legacy behavior.
     p_render = sub.add_parser(
@@ -446,7 +486,13 @@ def main() -> None:
 
     elif args.cmd == "spawn":
         cwd = Path.cwd()
-        prompt = opening_prompt(args.track, args.project)
+        # Resolve prompt style. --legacy-prompt is shorthand for the explicit form.
+        prompt_style = "legacy" if args.legacy_prompt else args.prompt_style
+        if prompt_style == "envelope":
+            payload = synthesise_payload_for_track(args.track, args.project)
+            prompt = render_envelope(payload, project=args.project)
+        else:
+            prompt = opening_prompt(args.track, args.project)
         mode = args.mode
         if mode == "auto":
             mode = "tmux" if has_tmux_session() else "background"
