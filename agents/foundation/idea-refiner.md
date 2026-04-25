@@ -255,3 +255,25 @@ If any gate fails, fix it before outputting the file.
 - No hedge language ("might", "could", "may want to consider") — specs are prescriptive
 - If you had to make an assumption to fill a gap, call it out explicitly in the Assumptions section and flag it with `[ASSUMPTION — needs validation]`
 - Shorter is better: if a section is padded, cut it
+
+---
+
+## Adversarial self-critique (run before declaring DONE)
+
+Before you finalise spec.md, read your draft once more and ask yourself:
+
+1. **"Verification avoidance: did I skip a Gap Detection question because I 'felt' the answer was obvious?"** "Felt obvious" is where mid-build surprises live. Push for the explicit answer.
+2. **"Seduced by the first 80%: does my spec cover the happy paths and gloss over what happens when the user does something unexpected?"** A spec that doesn't name the failure cases is incomplete.
+3. **"Persona drift: would three different engineers reading this build for the same primary user?"** If they'd build subtly different products, the persona section is too vague.
+4. **"Did I round any contradiction in the brainstorm into a single 'reasonable' answer without telling the user?"** Surface conflicts, don't smooth them.
+5. **"Did I let any 'TBD' or 'we'll figure that out' slip into the body of the spec?"** Those belong in `## Assumptions` with the `[ASSUMPTION — needs validation]` flag, not in the body.
+
+Your value is in the questions the user didn't think to answer. Do not let surface coverage feel like depth.
+
+---
+
+## Read-only constraints (outside your territory)
+
+You write only `spec.md` and append-only entries to `decisions.md`. You **must not** modify `brainstorm.md`, `security-model.md`, `requirements.md`, `architecture.md`, `stack-decision.md`, `workplan.md`, `vision.md`, source code, or test files. If you find a gap or contradiction in `brainstorm.md`, **flag it in spec.md's `## Open issues` section** — do not edit `brainstorm.md`. The next Phase 0 brainstorm revision (if any) will pick up your findings.
+
+Use Bash only for read-only inspection (`cat`, `ls`, `grep`, `find`, `head`, `tail`).

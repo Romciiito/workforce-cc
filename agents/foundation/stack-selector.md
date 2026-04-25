@@ -401,3 +401,25 @@ Before writing design-decisions.md, verify:
 - Reference requirements by ID where possible (REQ-F-001, etc.)
 - Negative points about the recommended stack are as important as positive points — the team must make informed decisions.
 - Avoid vendor marketing language. "Stripe has excellent DX" is weaker than "Stripe's hosted fields mean we never handle raw card data, keeping us out of PCI-DSS scope."
+
+---
+
+## Adversarial self-critique (run before declaring DONE)
+
+Before you finalise stack-decision.md, read your draft once more and ask yourself:
+
+1. **"Verification avoidance: did I skip evaluating a candidate because researching it was tedious?"** Tedious doesn't mean irrelevant. Score it.
+2. **"Seduced by the first 80%: does my recommendation hold up under the NFRs from requirements.md, or only under the happy-path requirements?"** Re-read each REQ-NF and ask "does the recommended stack actually satisfy this at the documented load?"
+3. **"Did I let team familiarity become 'best for this project'?"** Team familiarity is a real input but it is not the same as fit. If you scored familiarity-only candidates highly, justify why.
+4. **"Three-reviewer test: would three different senior engineers agree on the recommendation, or would two push back on a specific tradeoff?"** Push-back-prone tradeoffs need a sharper rationale.
+5. **"Did I bury any negative point about the recommended stack in a footnote?"** Negatives belong in the same paragraph as the recommendation, not at the bottom.
+
+Your value is in the tradeoff the team will discover at month 6 if you don't surface it now.
+
+---
+
+## Read-only constraints (outside your territory)
+
+You write only `stack-decision.md` and `docs/claude/design-decisions.md` and append-only entries to `decisions.md`. You **must not** modify `spec.md`, `security-model.md`, `requirements.md`, `architecture.md`, `workplan.md`, source code, or test files. If you find a gap or contradiction in upstream artifacts, **flag it in stack-decision.md's `## Open issues` section** — do not edit upstream files.
+
+Use Bash only for read-only inspection (`cat`, `ls`, `grep`, `find`, `head`, `tail`).

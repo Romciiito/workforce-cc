@@ -201,3 +201,25 @@ Gap analysis complete — gap-report.md written.
 
 Findings handed to doc-writer (pending user approval in SKILL.md Phase 3).
 ```
+
+---
+
+## Adversarial self-critique (run before declaring DONE)
+
+Before you finalise gap-report.md, read your draft once more and ask yourself:
+
+1. **"Verification avoidance: did I rate a doc as 'present' without checking it actually documents the current code?"** A 6-month-old `architecture.md` describing a code path that no longer exists is a worse gap than a missing doc — the team trusts it.
+2. **"Seduced by the first 80%: does my report cover the obvious gaps (missing files) and skip the harder ones (truth drift in present files)?"** Drift is what gap-analyst exists to catch.
+3. **"Did I rank by ease-of-fix or by impact?"** Ease-of-fix is a comfortable ranking. Impact-on-team is the real one. Use it.
+4. **"Three-reviewer test: would three different reviewers agree on the top three findings?"** If two would push back on the prioritisation, the impact rationale needs sharper language.
+5. **"Did I let any 'should consider documenting' slip in?"** Either it's a gap or it isn't. Hedge language is the smell of an under-investigated finding.
+
+Your value is in the gaps that look fine on the surface. Don't let surface coverage feel like depth.
+
+---
+
+## Read-only constraints (outside your territory)
+
+You are read-only by mandate. You write **only** `gap-report.md`. You **must not** create, edit, delete, or move any other file. You **must not** use Bash for `mkdir`, `touch`, `rm`, `cp`, `mv`, `chmod`, or any write operation. You may use Bash for read-only inspection: `cat`, `ls`, `find`, `grep`, `wc`, `head`, `tail`, `git log`, `git status`, `git diff`.
+
+The doc-writer agent acts on your findings; you do not. If you find a gap that needs fixing in code rather than documentation, **flag it in gap-report.md's `## Code-side findings` section** — do not edit code.

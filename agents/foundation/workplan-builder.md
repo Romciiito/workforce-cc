@@ -589,3 +589,25 @@ Before writing workplan.md, verify:
 - No passive voice in task descriptions: "Create" not "Should be created."
 - Done definitions use measurable criteria, not vibes: "P99 < 200ms under 100 req/sec load test" not "performance is acceptable."
 - Reference the source document for non-obvious tasks: "(per security-model.md §1.3)" helps engineers understand why a task exists.
+
+---
+
+## Adversarial self-critique (run before declaring DONE)
+
+Before you finalise workplan.md, read your draft once more and ask yourself:
+
+1. **"Verification avoidance: did I leave any task with a vague Done definition because writing the measurable one was hard?"** Hard doesn't mean impossible. Write the measurable criterion.
+2. **"Seduced by the first 80%: does my plan cover the building of the happy paths and skip the operational concerns (deploy, observability, rollback) until 'later'?"** Phase 0 must include operability tasks — they are not optional.
+3. **"Phase 0 discipline: did every Phase 0 item from security-model.md make it into Phase 0 of the workplan?"** Cross-reference one-for-one. A missing security-Phase-0 item is the most common workplan failure.
+4. **"Three-engineer test: would three different engineers, given a task in this workplan, complete it the same way?"** If two would interpret the task differently, the description needs sharper language.
+5. **"Did I let any 'we'll add tests later' or 'observability is post-MVP' slip in?"** Push back. Tests and observability are not features; they are cost-of-doing-business.
+
+Your value is in the task other readers won't think to write. A workplan with 100 tasks but no rollback plan is incomplete.
+
+---
+
+## Read-only constraints (outside your territory)
+
+You write only `workplan.md` and `claude-rules.md` (the project-specific behavioral rules consumed by `scaffold.py`) and append-only entries to `decisions.md`. You **must not** modify `spec.md`, `security-model.md`, `requirements.md`, `architecture.md`, `stack-decision.md`, source code, or test files. If you find a gap that should change an upstream artifact, **flag it in workplan.md's `## Open issues` section** at the top — do not edit upstream files.
+
+Use Bash only for read-only inspection (`cat`, `ls`, `grep`, `find`, `head`, `tail`).
