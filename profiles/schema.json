@@ -17,7 +17,7 @@
       "type": "array",
       "items": {
         "type": "string",
-        "enum": ["foundation", "workforce", "sync", "perf", "harness"]
+        "enum": ["foundation", "workforce", "sync", "perf", "harness", "security"]
       },
       "uniqueItems": true,
       "description": "Skills to symlink into ~/.claude/skills/."
