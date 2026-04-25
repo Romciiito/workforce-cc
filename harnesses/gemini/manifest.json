@@ -1,0 +1,20 @@
+{
+  "$schema": "../manifest-schema.json",
+  "name": "gemini",
+  "description": "Google Gemini CLI. Reads GEMINI.md as project context. Adapter shim writes a single GEMINI.md.",
+  "writes": [
+    {
+      "kind": "rules-file",
+      "target": "GEMINI.md",
+      "source": "harnesses/gemini/GEMINI.md.jinja",
+      "render": "jinja2",
+      "overwrite": true
+    }
+  ],
+  "supports": {
+    "orchestration": "context-only",
+    "mcp": false,
+    "hooks": false,
+    "skills": false
+  }
+}

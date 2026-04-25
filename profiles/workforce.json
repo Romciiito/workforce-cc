@@ -4,5 +4,6 @@
   "description": "Existing-project audit only. Workforce skill, sync, shared + orchestrator agents, workforce pack. No foundation-specific agents.",
   "skills": ["workforce", "sync", "perf"],
   "agent_packs": ["_shared", "orchestrators", "workforce"],
-  "hooks": ["governance"]
+  "hooks": ["governance"],
+  "harnesses": ["claude"]
 }

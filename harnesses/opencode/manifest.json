@@ -1,0 +1,20 @@
+{
+  "$schema": "../manifest-schema.json",
+  "name": "opencode",
+  "description": "opencode (open-source CLI). Reads .opencode/agents/*.md and opencode.json. Adapter shim writes a single context file pointing at workforce-cc.",
+  "writes": [
+    {
+      "kind": "rules-file",
+      "target": ".opencode/agents/workforce-cc.md",
+      "source": "harnesses/opencode/workforce-cc.md.jinja",
+      "render": "jinja2",
+      "overwrite": true
+    }
+  ],
+  "supports": {
+    "orchestration": "context-only",
+    "mcp": false,
+    "hooks": false,
+    "skills": false
+  }
+}

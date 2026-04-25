@@ -1,0 +1,27 @@
+{
+  "$schema": "../manifest-schema.json",
+  "name": "cursor",
+  "description": "Cursor IDE. Reads .cursor/rules/*.mdc — each rule is a separate file with optional metadata. Adapter shim only — Cursor doesn't run the workforce-cc orchestrators directly; it surfaces the workforce-cc context (intent, architecture, ADRs) so the user's Cursor sessions see it.",
+  "writes": [
+    {
+      "kind": "rules-file",
+      "target": ".cursor/rules/00-workforce-cc.mdc",
+      "source": "harnesses/cursor/00-workforce-cc.mdc.jinja",
+      "render": "jinja2",
+      "overwrite": true
+    },
+    {
+      "kind": "rules-file",
+      "target": ".cursor/rules/01-orchestration-pointers.mdc",
+      "source": "harnesses/cursor/01-orchestration-pointers.mdc.jinja",
+      "render": "jinja2",
+      "overwrite": true
+    }
+  ],
+  "supports": {
+    "orchestration": "context-only",
+    "mcp": false,
+    "hooks": false,
+    "skills": false
+  }
+}

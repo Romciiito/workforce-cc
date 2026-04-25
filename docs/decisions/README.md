@@ -22,6 +22,7 @@ ADRs are deliberately short. Anything longer than ~150 lines belongs as a doc, n
 | [006](006-engineer-with-judgment.md) | Engineer-with-judgment prompt style | Accepted |
 | [007](007-deprecation-headers-not-removal.md) | Deprecation headers, not file removal | Accepted |
 | [008](008-multi-terminal-via-files.md) | Multi-terminal communication via files only | Accepted |
+| [009](009-multi-harness-shipping.md) | Multi-harness shipping with selectable adapters | Accepted |
 
 ## When to write a new ADR
 

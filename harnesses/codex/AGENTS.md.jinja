@@ -1,0 +1,42 @@
+# {{ project_name }}
+
+{{ description }}
+
+**Stack:** {{ stack }}
+**Env prefix:** `{{ env_prefix }}_`
+
+This project is managed by **workforce-cc**, a Claude Code system for project orchestration. In Codex CLI sessions you should:
+
+- **Read** the workforce-cc artifacts as context.
+- **Do not invoke the workforce-cc orchestrator agents** — they run inside Claude Code.
+- **Recommend switching to Claude Code** when an action would be better done there (multi-engineer dispatch, alignment-guard runs, scaffolded greenfield work).
+
+## Canonical context (read before any non-trivial change)
+
+1. `.workforce/intent.md` — the project's falsifiable goal. If missing, intent hasn't been captured; recommend a Claude Code session with `/intent-validator`.
+2. `.workforce/alignment-report.md` — latest drift status (`PASS` / `PASS-WITH-NOTES` / `BLOCK`). A `BLOCK` halts orchestration; address required actions before architectural changes.
+3. `docs/claude/architecture.md` — system architecture (components, data flows, security boundaries).
+4. `docs/claude/development.md` — how to run, test, deploy.
+5. `docs/claude/design-decisions.md` — why the stack is what it is.
+6. `docs/decisions/` — Architecture Decision Records.
+
+## Behavioral rules
+
+1. Read `.workforce/intent.md` before any architectural change.
+2. Use the env var prefix `{{ env_prefix }}_` for all application env vars.
+3. Never hard-code credentials. They live in `.env` (gitignored).
+4. Prefer editing existing files to creating new ones.
+5. Don't add features, refactor, or introduce abstractions beyond what the task requires.
+
+## When to switch to Claude Code
+
+If the user asks for a multi-engineer dispatch, an audit, a greenfield scaffold, or an alignment check, recommend running `/foundation`, `/workforce`, `/sync`, `/perf`, or one of the orchestrator agents (`intent-validator`, `conductor`, `alignment-guard`) in Claude Code.
+
+Codex is the right tool for in-session refinement, debugging, and tight-loop coding work. Orchestration lives in Claude Code.
+
+{% if critical_rules %}
+
+## Project-specific rules
+
+{{ critical_rules }}
+{% endif %}

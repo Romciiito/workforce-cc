@@ -22,13 +22,15 @@ cd ~/.foundation && ./install.sh
 Common forms:
 
 ```bash
-./install.sh                          # install everything (legacy, == --profile full)
-./install.sh --profile foundation     # greenfield bootstrap only
-./install.sh --profile workforce      # existing-project audit only
-./install.sh --profile minimal        # just /sync; no agents, no hooks
-./install.sh --dry-run                # preview without writing
-./install.sh --force                  # overwrite existing agent files
-./install.sh --uninstall              # remove everything this installer placed
+./install.sh                                            # install everything (legacy, == --profile full)
+./install.sh --profile foundation                       # greenfield bootstrap only
+./install.sh --profile workforce                        # existing-project audit only
+./install.sh --profile minimal                          # just /sync; no agents, no hooks
+./install.sh --harnesses claude,cursor                  # adapters for two harnesses
+./install.sh --harnesses claude,cursor,codex,opencode,gemini  # all five
+./install.sh --dry-run                                  # preview without writing
+./install.sh --force                                    # overwrite existing agent files
+./install.sh --uninstall                                # remove everything this installer placed
 
 # Legacy flags still work:
 ./install.sh --only foundation
@@ -39,9 +41,40 @@ The installer:
 
 1. Symlinks each profile's skills into `~/.claude/skills/`.
 2. Copies agents from `agents/_shared/`, `agents/orchestrators/`, `agents/foundation/`, `agents/workforce/` into `~/.claude/agents/` (per profile).
-3. Writes the repo path to `~/.foundation-path` and the profile name to `~/.workforce-profile`.
+3. Writes the repo path to `~/.foundation-path`, the profile name to `~/.workforce-profile`, and the harness selection to `~/.workforce-harnesses`.
 
 Dependencies: `python3`, `git`, and (for `/foundation` only) `npx` + `jinja2` (`pip install jinja2`).
+
+---
+
+## Supported AI-coding-agent harnesses
+
+workforce-cc was originally a Claude Code system, but it now ships adapter files for five harnesses. Each adapter writes harness-specific context into a project so the workforce-cc artifacts (intent, dispatch, alignment-report, ADRs) are visible to whatever harness the user runs.
+
+| Harness | Files written | Orchestration support |
+|---|---|---|
+| **claude** | `CLAUDE.md`, `.claude/agents/`, `.claude/settings.local.json` | Full — runs all orchestrator agents |
+| **cursor** | `.cursor/rules/00-workforce-cc.mdc`, `.cursor/rules/01-orchestration-pointers.mdc` | Context-only |
+| **codex** | `AGENTS.md` | Context-only |
+| **opencode** | `.opencode/agents/workforce-cc.md` | Context-only |
+| **gemini** | `GEMINI.md` | Context-only |
+
+**"Context-only"** means the harness sees the workforce-cc artifacts and recommends running `/foundation`, `/workforce`, `/sync`, or `/perf` in Claude Code when the user wants orchestration. The harness doesn't run intent-validator / conductor / alignment-guard itself.
+
+Select harnesses two ways:
+
+```bash
+# Use a profile's default (each profile defaults to ['claude']):
+./install.sh --profile full
+
+# Override the profile's harness list at install time:
+./install.sh --profile full --harnesses claude,cursor
+
+# Explicit selection without a profile:
+./install.sh --harnesses claude,codex,gemini
+```
+
+Per-project rendering is driven by [`scripts/harness_install.py`](scripts/harness_install.py), which reads `harnesses/<name>/manifest.json` and applies each declared `writes` entry. See [`harnesses/README.md`](harnesses/README.md) for the adapter framework.
 
 ---
 

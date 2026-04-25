@@ -13,10 +13,17 @@
 #   4. ~/.foundation-path                  absolute path to this repo (consumed by SKILL.md)
 #
 # Flags:
-#   --only foundation   install only the Foundation skill + shared agents
-#   --only workforce    install only the Workforce skill + shared agents
-#   --force             overwrite existing agent files (defaults to skip-if-exists)
-#   --uninstall         remove skills + agents installed by this repo
+#   --profile <name>      install per profiles/<name>.json (full | foundation |
+#                         workforce | minimal). Reads skills + agent_packs +
+#                         hooks + harnesses from the JSON.
+#   --harnesses <list>    comma-separated harness selection, overrides the
+#                         profile's harnesses list. Available: claude, cursor,
+#                         codex, opencode, gemini. Default: claude.
+#   --only foundation     install only the Foundation skill + shared agents (legacy)
+#   --only workforce      install only the Workforce skill + shared agents (legacy)
+#   --dry-run             print planned actions without writing
+#   --force               overwrite existing agent files (defaults to skip-if-exists)
+#   --uninstall           remove skills + agents installed by this repo
 
 set -euo pipefail
 
@@ -30,11 +37,13 @@ FORCE=0
 UNINSTALL=0
 PROFILE=""
 DRY_RUN=0
+HARNESSES_OVERRIDE=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --only) MODE="$2"; shift 2 ;;
     --profile) PROFILE="$2"; shift 2 ;;
+    --harnesses) HARNESSES_OVERRIDE="$2"; shift 2 ;;
     --dry-run) DRY_RUN=1; shift ;;
     --force) FORCE=1; shift ;;
     --uninstall) UNINSTALL=1; shift ;;
@@ -53,6 +62,7 @@ done
 PROFILE_SKILLS=""
 PROFILE_PACKS=""
 PROFILE_HOOKS=""
+PROFILE_HARNESSES=""
 if [[ -n "$PROFILE" ]]; then
   PROFILE_FILE="${ROOT_DIR}/profiles/${PROFILE}.json"
   if [[ ! -f "$PROFILE_FILE" ]]; then
@@ -77,6 +87,34 @@ import json
 d = json.load(open('${PROFILE_FILE}'))
 print(' '.join(d.get('hooks', []) or []))
 ")"
+  PROFILE_HARNESSES="$(python3 -c "
+import json
+d = json.load(open('${PROFILE_FILE}'))
+# Default to ['claude'] when missing — preserves legacy behavior.
+print(' '.join(d.get('harnesses') or ['claude']))
+")"
+fi
+
+# --harnesses overrides the profile's harnesses list. Comma-separated.
+# Validates against the manifest-schema enum: claude / cursor / codex / opencode / gemini.
+EFFECTIVE_HARNESSES_STR=""
+if [[ -n "$HARNESSES_OVERRIDE" ]]; then
+  EFFECTIVE_HARNESSES_STR="$(echo "$HARNESSES_OVERRIDE" | tr ',' ' ')"
+elif [[ -n "$PROFILE_HARNESSES" ]]; then
+  EFFECTIVE_HARNESSES_STR="$PROFILE_HARNESSES"
+else
+  # Legacy mode (no --profile, no --harnesses): default to claude.
+  EFFECTIVE_HARNESSES_STR="claude"
+fi
+
+# Validate every requested harness exists.
+if [[ $UNINSTALL -eq 0 ]]; then
+  for h in $EFFECTIVE_HARNESSES_STR; do
+    if [[ ! -d "${ROOT_DIR}/harnesses/${h}" ]]; then
+      echo "ERROR: unknown harness: ${h}. Available: $(ls "${ROOT_DIR}/harnesses/" 2>/dev/null | grep -v '^README' | grep -v '\.json$' | tr '\n' ' ')"
+      exit 1
+    fi
+  done
 fi
 
 echo ""
@@ -91,6 +129,7 @@ if [[ -n "$PROFILE" ]]; then
 else
   echo "  Mode:        $MODE  (legacy; pass --profile <name> for profiled installs)"
 fi
+echo "  Harnesses:   ${EFFECTIVE_HARNESSES_STR}${HARNESSES_OVERRIDE:+ (--harnesses override)}"
 [[ $FORCE -eq 1 ]] && echo "  Force:       yes (agent files will be overwritten)"
 [[ $DRY_RUN -eq 1 ]] && echo "  Dry-run:     yes (no files will be written)"
 [[ $UNINSTALL -eq 1 ]] && echo "  Action:      UNINSTALL"
@@ -295,6 +334,18 @@ elif [[ $UNINSTALL -eq 1 ]]; then
   rm -f "${HOME}/.workforce-profile" 2>/dev/null
 fi
 
+# ── Install harness beacon ──────────────────────────────────────────────────
+# Comma-separated list of harnesses written to ~/.workforce-harnesses so
+# scripts/harness_install.py (invoked at scaffold time) knows which harnesses
+# to render adapters for. Always written when not uninstalling — even legacy
+# installs default to "claude" so this file's presence indicates "the user
+# ran install.sh at least once".
+if [[ $UNINSTALL -eq 0 && $DRY_RUN -eq 0 ]]; then
+  echo "$EFFECTIVE_HARNESSES_STR" | tr ' ' ',' > "${HOME}/.workforce-harnesses"
+elif [[ $UNINSTALL -eq 1 ]]; then
+  rm -f "${HOME}/.workforce-harnesses" 2>/dev/null
+fi
+
 # ── Write path beacon ──────────────────────────────────────────────────────────
 if [[ $UNINSTALL -eq 1 ]]; then
   rm -f "${HOME}/.foundation-path"
@@ -306,6 +357,8 @@ else
   echo "  /foundation   — bootstrap a new project"
   echo "  /workforce    — audit an existing project"
   echo "  /sync         — (if available) quick health check"
+  echo "  /perf         — (if available) performance diagnosis"
   echo ""
-  echo "  Beacon:  ~/.foundation-path → $ROOT_DIR"
+  echo "  Beacon:  ~/.foundation-path     → $ROOT_DIR"
+  echo "  Beacon:  ~/.workforce-harnesses → $(echo "$EFFECTIVE_HARNESSES_STR" | tr ' ' ',')"
 fi

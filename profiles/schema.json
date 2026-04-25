@@ -38,6 +38,15 @@
       },
       "uniqueItems": true,
       "description": "Names of hook scripts to enable via hooks/dispatcher.sh. Empty / missing = no hooks."
+    },
+    "harnesses": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["claude", "cursor", "codex", "opencode", "gemini"]
+      },
+      "uniqueItems": true,
+      "description": "Which AI-coding-agent harnesses to write adapter files for. Default when missing: ['claude'] — preserves legacy install behavior. install.sh --harnesses overrides this list."
     }
   }
 }

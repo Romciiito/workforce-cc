@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "workforce-cc harness adapter manifest",
+  "description": "Schema for harnesses/<name>/manifest.json — declares what files an adapter writes into a project, with which transforms.",
+  "type": "object",
+  "required": ["name", "description", "writes", "supports"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "writes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "target"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["rules-file", "agents-dir", "settings", "config-file"]
+          },
+          "target": {
+            "type": "string",
+            "description": "Relative path within the project where this file/dir is written."
+          },
+          "source": {
+            "type": "string",
+            "description": "Source template path (relative to repo root) OR script-callable spec."
+          },
+          "render": {
+            "type": "string",
+            "enum": ["jinja2", "copy", "python-callable"]
+          },
+          "from_packs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["_shared", "orchestrators", "foundation", "workforce", "deprecated"]
+            },
+            "description": "For agents-dir kind: which agent packs to copy."
+          },
+          "overwrite": {
+            "type": "boolean",
+            "description": "If false, skip when the target already exists."
+          }
+        }
+      }
+    },
+    "supports": {
+      "type": "object",
+      "description": "What workforce-cc features this harness supports.",
+      "properties": {
+        "orchestration": {
+          "type": "string",
+          "enum": ["full", "context-only", "none"]
+        },
+        "mcp": {"type": "boolean"},
+        "hooks": {"type": "boolean"},
+        "skills": {"type": "boolean"}
+      }
+    }
+  }
+}
