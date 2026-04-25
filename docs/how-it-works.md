@@ -2,6 +2,8 @@
 
 Foundation is a Claude Code skill that turns a raw idea into a fully scaffolded, agent-ready project — without any external CLI, API keys, or setup beyond what Claude Code already has.
 
+This document focuses on `/foundation`. For the full system architecture (the shared backbone, three orchestrator roles, multi-terminal spawn contract), see [`architecture.md`](architecture.md).
+
 ---
 
 ## The Problem It Solves
@@ -13,7 +15,7 @@ Starting a project manually with an AI assistant is inefficient:
 - The analysis is shallow — competitors, risks, and edge cases are missed.
 - You end up with a chat transcript, not a project.
 
-Foundation replaces that with a structured, parallel, reproducible pipeline that produces a real working scaffold with security baked in from day 0.
+Foundation replaces that with a structured, parallel, reproducible pipeline that produces a real working scaffold with security baked in from day 0. It now also flows through the shared **Validator → Conductor → Alignment Guard** spine: the Intent Validator forces a falsifiable goal before brainstorming starts, and the Alignment Guard catches drift before the build team is activated.
 
 ---
 
@@ -21,6 +23,15 @@ Foundation replaces that with a structured, parallel, reproducible pipeline that
 
 ```
 User types /foundation
+         │
+         ▼
+PHASE -1 — INTENT VALIDATION (intent-validator, blocking)
+  Three modes: A (greenfield Socratic interrogation, max 6 questions),
+  B (revision of existing intent), C (pass-through for concrete requests).
+  Refuses to advance until .workforce/intent.md has all six required
+  sections with falsifiable content.
+  Output: .workforce/intent.md
+
          │
          ▼
 PHASE 0 — DEEP BRAINSTORM (interactive, ~15 min)
@@ -68,10 +79,26 @@ PHASE 3 — SCAFFOLD GENERATION (automated, ~1 min)
 
          │
          ▼
+PHASE 3.5 — HUMAN VERIFICATION CHECKPOINT
+  User must explicitly type "confirm" before Phase 4.
+  Otherwise: "revise <doc>" or "revise all".
+
+         │
+         ▼
+PHASE 3.6 — ALIGNMENT GUARD --mode=vision
+  Reads .workforce/intent.md vs spec.md, architecture.md, workplan.md.
+  Returns PASS / PASS-WITH-NOTES / BLOCK.
+  HIGH severity → BLOCK halts Phase 4 mechanically.
+  Output: .workforce/alignment-report.md
+
+         │
+         ▼
 PHASE 4 — TEAM ACTIVATION
-  Summary printed. Orchestrator agent reads workplan.md
-  and assigns Phase 0 parallel tracks.
+  Summary printed. agent-generator writes 6 build agents
+  to .claude/agents/. foundation-orchestrator activated.
 ```
+
+The full multi-terminal spawn contract used internally by these phases is described in [`architecture.md`](architecture.md). Each engineer agent runs in its own terminal with its own 1M context window; communication is via artifacts on disk.
 
 ---
 
