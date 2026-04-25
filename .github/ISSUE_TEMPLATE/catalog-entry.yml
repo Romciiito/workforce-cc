@@ -1,0 +1,101 @@
+name: Propose a new catalog entry
+description: Add an agent, skill, command, or hook to catalogs/.
+title: "[catalog] <kind>: <name>"
+labels: ["catalog", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template when proposing an addition to `catalogs/<source>/`.
+        For changes to existing entries, file a PR directly instead.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind
+      description: What sort of entry is this?
+      options:
+        - agent
+        - skill
+        - command
+        - hook
+        - mcp
+    validations:
+      required: true
+
+  - type: input
+    id: name
+    attributes:
+      label: Entry name
+      description: The `name:` value that will appear in the entry's frontmatter (lowercase, hyphenated).
+      placeholder: e.g. security-reviewer
+    validations:
+      required: true
+
+  - type: input
+    id: source_repo
+    attributes:
+      label: Source repository
+      description: GitHub `<owner>/<repo>` the entry comes from. Required for redistribution.
+      placeholder: e.g. affaan-m/everything-claude-code
+    validations:
+      required: true
+
+  - type: input
+    id: source_path
+    attributes:
+      label: Path within source repository
+      description: Where the entry lives upstream.
+      placeholder: e.g. agents/security-reviewer.md
+    validations:
+      required: true
+
+  - type: input
+    id: license
+    attributes:
+      label: Upstream license
+      description: Must be MIT, Apache-2.0, BSD, CC0, or another redistributable license. Closed/unclear licenses will be rejected.
+      placeholder: e.g. MIT
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: One-line summary
+      description: ≤ 280 chars. Will appear in `catalog_query.py` search results.
+    validations:
+      required: true
+
+  - type: textarea
+    id: stacks
+    attributes:
+      label: Recommended stacks (optional)
+      description: Which workforce-cc stacks does this entry apply to? Leave blank for "any".
+      placeholder: |
+        - python-fastapi
+        - nextjs-fullstack
+
+  - type: textarea
+    id: tags
+    attributes:
+      label: Tags (optional)
+      description: Free-form taxonomy. Conventions; `kind:<kind>` and `source:<repo>` are added automatically.
+      placeholder: |
+        - domain:security
+        - role:reviewer
+
+  - type: checkboxes
+    id: gates
+    attributes:
+      label: Acceptance gates
+      description: All four must hold before this entry is merged.
+      options:
+        - label: The upstream license permits redistribution and is correctly attributed in `catalogs/<source>/LICENSE`.
+          required: true
+        - label: The entry has a `name:` and `description:` in its frontmatter.
+          required: true
+        - label: The entry's name is unique within the catalog (or this issue describes the renaming plan).
+          required: true
+        - label: I've verified the entry is functional (not stale boilerplate or a dead reference).
+          required: true

@@ -1,0 +1,10 @@
+{
+  "$schema": "../schema.json",
+  "source": {
+    "repo": "affaan-m/everything-claude-code",
+    "license": "MIT",
+    "upstream_commit": null,
+    "synced_at": null
+  },
+  "entries": []
+}
