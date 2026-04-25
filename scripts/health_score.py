@@ -7,6 +7,7 @@ Prints a JSON object with dimension scores.
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -33,29 +34,43 @@ EXPECTED_AGENTS = [
 ]
 
 
-def run(cmd: str, cwd: Path) -> str:
+FEATURE_PATTERN = re.compile(r"feat|add |implement|build|create", re.IGNORECASE)
+GIT_HASH_RE = re.compile(r"^[0-9a-f]{4,40}$")
+
+
+def run_git(args: list[str], cwd: Path) -> str:
+    """Run a git command without invoking a shell. Returns stdout (stripped) or ''."""
     try:
         result = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, cwd=cwd
+            ["git", *args],
+            capture_output=True,
+            text=True,
+            cwd=cwd,
+            check=False,
         )
         return result.stdout.strip()
-    except Exception:
+    except (FileNotFoundError, OSError):
         return ""
 
 
 def count_feature_commits_since(filepath: Path, project_dir: Path) -> int:
     """Count feature commits since a file was last modified."""
-    last_hash = run(f'git log -1 --format="%H" -- "{filepath}"', project_dir)
-    if not last_hash:
-        return 0
-    count_str = run(
-        f'git log {last_hash}..HEAD --oneline | grep -ic "feat\\|add \\|implement\\|build\\|create" || true',
+    last_hash = run_git(
+        ["log", "-1", "--format=%H", "--", str(filepath)],
         project_dir,
     )
-    try:
-        return int(count_str)
-    except ValueError:
+    # Defensive: only accept what looks like a real git hash before passing
+    # it to another git invocation. Prevents flag injection if the file
+    # path ever lets a hostile value bubble up through `git log`.
+    if not last_hash or not GIT_HASH_RE.match(last_hash):
         return 0
+    log_output = run_git(
+        ["log", f"{last_hash}..HEAD", "--oneline"],
+        project_dir,
+    )
+    if not log_output:
+        return 0
+    return sum(1 for line in log_output.splitlines() if FEATURE_PATTERN.search(line))
 
 
 def score_vision(project_dir: Path) -> tuple[int, str]:

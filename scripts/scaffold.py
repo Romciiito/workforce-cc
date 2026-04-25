@@ -7,6 +7,7 @@ Renders Jinja2 templates + copies stack structure into the target project direct
 import argparse
 import json
 import os
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -16,6 +17,19 @@ try:
 except ImportError:
     print("ERROR: jinja2 not installed. Run: pip install jinja2", file=sys.stderr)
     sys.exit(1)
+
+
+def derive_env_prefix(project_name: str) -> str:
+    """Derive an UPPER_SNAKE_CASE env-var prefix from the project name.
+
+    Many templates reference ``{{ env_prefix }}`` (e.g. APP_DATABASE_URL).
+    We normalise the project name into a safe identifier and fall back to
+    ``APP`` whenever the name has no usable characters.
+    """
+    cleaned = re.sub(r"[^A-Za-z0-9]+", "_", project_name).strip("_").upper()
+    if not cleaned or not cleaned[0].isalpha():
+        return "APP"
+    return cleaned
 
 
 STACK_PERMISSIONS = {
@@ -205,6 +219,7 @@ def main() -> None:
         "stack": args.stack,
         "description": args.description,
         "critical_rules": critical_rules,
+        "env_prefix": derive_env_prefix(args.project_name),
     }
 
     env = Environment(

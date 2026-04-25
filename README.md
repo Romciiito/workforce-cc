@@ -15,7 +15,7 @@ Both skills share a common agent pool, template set, and scripts. Switching betw
 ## Install
 
 ```bash
-git clone https://github.com/Romciiito/foundation ~/.foundation
+git clone https://github.com/Romciiito/workforce-cc ~/.foundation
 cd ~/.foundation && ./install.sh
 ```
 
@@ -168,6 +168,21 @@ $ claude
   Overall    38/50  healthy — drift check only
   Recommendation: run /workforce and accept security-analyst in the plan
 ```
+
+---
+
+## Tests
+
+The deterministic helpers (`scripts/`) and the installer (`install.sh`)
+ship with a pytest suite. CI runs it on Python 3.11/3.12/3.13 plus a
+shellcheck pass on every push.
+
+```bash
+pip install pytest jinja2
+pytest
+```
+
+See [tests/README.md](tests/README.md) for what each test file covers.
 
 ---
 

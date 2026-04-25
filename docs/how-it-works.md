@@ -118,7 +118,7 @@ Foundation is now part of a merged monorepo that also contains Workforce and a `
 ## Installation
 
 ```bash
-git clone https://github.com/Romciiito/foundation ~/.foundation
+git clone https://github.com/Romciiito/workforce-cc ~/.foundation
 ~/.foundation/install.sh
 ```
 
@@ -129,9 +129,9 @@ Then open any empty project directory in Claude Code and type `/foundation`.
 ## Adding a New Stack
 
 1. Create `templates/stacks/<stack-name>/structure.json` with `dirs` and `files` keys.
-2. Add the stack to `STACK_PERMISSIONS` in `skill/scripts/scaffold.py`.
+2. Add the stack to `STACK_PERMISSIONS` in `scripts/scaffold.py`.
 3. Add skill recommendations to `skill-catalog.json`.
-4. Reference the new stack name in `skill/SKILL.md` Phase 1B stack list.
+4. Reference the new stack name in `skills/foundation/SKILL.md` Phase 1B stack list.
 
 ---
 

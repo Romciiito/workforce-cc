@@ -4,9 +4,12 @@
 # Installs:
 #   1. ~/.claude/skills/foundation         → skills/foundation   (symlink)
 #   2. ~/.claude/skills/workforce          → skills/workforce    (symlink)
-#   3. ~/.claude/agents/<name>.md          copies of agents/_shared/* and agents/foundation/*
-#                                          and agents/workforce/*, each prefixed by its pack
-#                                          (foundation-*, workforce-*, shared agents unchanged)
+#   3. ~/.claude/agents/<name>.md          copies of agents/_shared/*, agents/foundation/*,
+#                                          and agents/workforce/*. Filenames are kept as-is —
+#                                          the per-pack agents are already uniquely named
+#                                          (foundation-orchestrator.md, workforce-orchestrator.md, etc.),
+#                                          so no extra prefixing is applied. The installer aborts
+#                                          if it ever detects a same-name collision across packs.
 #   4. ~/.foundation-path                  absolute path to this repo (consumed by SKILL.md)
 #
 # Flags:
@@ -134,6 +137,25 @@ esac
 echo ""
 
 # ── Install agents ──────────────────────────────────────────────────────────────
+# Sanity check: ensure no two packs ship an agent with the same filename.
+# Since copy_agent uses an empty prefix, a duplicate would silently overwrite
+# the first copy and leave a confusing partial install.
+if [[ $UNINSTALL -eq 0 ]]; then
+  collision_check="$(
+    {
+      ls -1 "${ROOT_DIR}/agents/_shared/" 2>/dev/null
+      ls -1 "${ROOT_DIR}/agents/foundation/" 2>/dev/null
+      ls -1 "${ROOT_DIR}/agents/workforce/" 2>/dev/null
+    } | sort | uniq -d
+  )"
+  if [[ -n "$collision_check" ]]; then
+    echo "ERROR: agent filename collision across packs:"
+    echo "$collision_check" | sed 's/^/  /'
+    echo "Resolve by renaming the duplicates, then re-run install.sh."
+    exit 1
+  fi
+fi
+
 echo "Agents:"
 
 # shared agents — always installed (usable by both skills), no prefix
