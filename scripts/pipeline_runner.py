@@ -381,6 +381,190 @@ def synthesise_payload_for_track(track: str, project: str):
     )
 
 
+def parse_dispatch_md(path: Path) -> dict:
+    """Parse a `.workforce/dispatch.md` (or compatible) file into a structure.
+
+    Returns a dict with:
+      - run_id: str | None
+      - waves: list[list[str]]  — each inner list is the task names (or numbers) in that wave
+      - tasks: dict[str, dict]  — keyed by task heading (e.g. "Task 1 — architect");
+        each value carries engineer, territory, inputs, outputs, verification.
+
+    The expected schema is the one in skills/_backbone/dispatch.template.md:
+
+        ## Wave order
+        1. architect, security-analyst
+        2. workplan-builder
+
+        ## Tasks
+
+        ### Task 1 — architect
+        - **Territory**: ...
+        - **Inputs**: intent.md, spec.md
+        - **Outputs**: architecture.md
+        - **Verification**: pytest tests/test_*.py
+
+    The parser is forgiving: missing fields default to empty; the caller
+    decides whether to halt or proceed with defaults.
+    """
+    if not path.exists():
+        raise SystemExit(f"dispatch.md not found at {path}")
+    text = path.read_text()
+
+    out = {
+        "run_id": None,
+        "waves": [],
+        "tasks": {},
+    }
+
+    import re
+
+    # Run id (look for ".workforce/runs/<...>" anywhere in a "## Run id" block).
+    run_id_match = re.search(r"##\s+Run id\s*\n+\s*(\.workforce/runs/[^\s]+)", text)
+    if run_id_match:
+        out["run_id"] = run_id_match.group(1)
+
+    # Wave order. Captures numbered list lines under "## Wave order".
+    wave_block_match = re.search(
+        r"##\s+Wave order\s*\n((?:\s*\d+\.[^\n]*\n)+)", text
+    )
+    if wave_block_match:
+        for line in wave_block_match.group(1).splitlines():
+            stripped = line.strip()
+            if not stripped:
+                continue
+            # Strip "1.", "2.", etc.
+            content = re.sub(r"^\d+\.\s*", "", stripped)
+            tasks_in_wave = [t.strip() for t in content.split(",") if t.strip()]
+            out["waves"].append(tasks_in_wave)
+
+    # Tasks. Match "### Task N — <engineer>" headings and the bullet list under each.
+    task_re = re.compile(
+        r"###\s+(Task\s+\d+\s*[—–-]\s*([^\n]+))\n(.*?)(?=\n###\s+Task|\Z)",
+        re.DOTALL,
+    )
+    field_re = re.compile(r"-\s+\*\*([A-Za-z ]+?)\*\*\s*:\s*(.+?)(?=\n-\s+\*\*|\Z)", re.DOTALL)
+
+    for m in task_re.finditer(text):
+        heading_full = m.group(1).strip()
+        engineer = m.group(2).strip()
+        body = m.group(3)
+        task = {
+            "heading": heading_full,
+            "engineer": engineer,
+            "territory": [],
+            "inputs": [],
+            "outputs": [],
+            "verification": "",
+            "success_criteria": "",
+            "escalation": "",
+        }
+        for fm in field_re.finditer(body):
+            field_name = fm.group(1).strip().lower()
+            value = fm.group(2).strip()
+            if field_name in ("territory", "inputs", "outputs"):
+                # Comma-separated list.
+                items = [v.strip().strip("`") for v in re.split(r",|\n", value) if v.strip()]
+                task[field_name] = items
+            elif field_name == "verification":
+                task["verification"] = value.split("\n")[0].strip().strip("`")
+            elif field_name == "success criteria":
+                task["success_criteria"] = value.strip()
+            elif field_name == "escalation":
+                task["escalation"] = value.strip()
+        out["tasks"][heading_full] = task
+
+    return out
+
+
+def cmd_dispatch_wave(
+    dispatch_path: Path,
+    wave_index: int,
+    mode: str,
+    project: Optional[str],
+    dry_run: bool,
+) -> int:
+    """Read a dispatch.md and spawn every engineer in the chosen wave.
+
+    Wave index is 1-based to match the dispatch.md numbering.
+    """
+    parsed = parse_dispatch_md(dispatch_path)
+    if not parsed["waves"]:
+        print(f"No waves found in {dispatch_path}.", file=sys.stderr)
+        return 1
+    if wave_index < 1 or wave_index > len(parsed["waves"]):
+        print(
+            f"Wave {wave_index} out of range; dispatch.md has {len(parsed['waves'])} waves.",
+            file=sys.stderr,
+        )
+        return 1
+
+    sp = _load_spawn_payload_module()
+    cwd = Path.cwd()
+
+    # Resolve mode.
+    if mode == "auto":
+        mode = "tmux" if has_tmux_session() else "background"
+    if mode == "tmux" and not has_tmux_session():
+        print("tmux not available / not inside a tmux session — falling back to background.")
+        mode = "background"
+
+    wave_task_refs = parsed["waves"][wave_index - 1]
+    spawned = 0
+
+    print(f"DISPATCH WAVE {wave_index}/{len(parsed['waves'])} — mode={mode}, dry-run={dry_run}")
+    print(f"  source:  {dispatch_path}")
+    print(f"  run_id:  {parsed.get('run_id') or '(not declared in dispatch.md)'}")
+    print(f"  tasks:   {', '.join(wave_task_refs)}")
+    print()
+
+    for task_ref in wave_task_refs:
+        # Find the matching task. dispatch.md lists tasks by name in waves
+        # but the headings are "Task N — engineer". Match by engineer.
+        task = None
+        for heading, t in parsed["tasks"].items():
+            if t["engineer"] == task_ref or task_ref in heading:
+                task = t
+                break
+        if task is None:
+            print(f"  ! task '{task_ref}' not found in ## Tasks — skipping")
+            continue
+
+        run_id = parsed.get("run_id") or sp.new_run_id()
+        engineer = task["engineer"]
+        payload = sp.SpawnPayload(
+            run_id=run_id,
+            engineer=engineer,
+            inputs=list(task["inputs"]) or ["intent.md"],
+            outputs=list(task["outputs"]) or [],
+            status_file=f".workforce/status/{engineer}.json",
+            deadline_min=30,
+            retry_tier=sp.RetryTier.NONE,
+            shared_locks=[],
+        )
+        prompt = render_envelope(payload, project=project)
+
+        if dry_run:
+            print(f"  → would spawn {engineer}")
+            print(f"     inputs:  {', '.join(payload.inputs)}")
+            print(f"     outputs: {', '.join(payload.outputs)}")
+            print(f"     status:  {payload.status_file}")
+            spawned += 1
+            continue
+
+        if mode == "tmux":
+            spawn_tmux(engineer, prompt, cwd)
+        elif mode == "background":
+            spawn_background_print(engineer, prompt, cwd)
+        else:
+            spawn_instructions(engineer, prompt, cwd)
+        spawned += 1
+
+    print()
+    print(f"{'Would spawn' if dry_run else 'Spawned'} {spawned} engineer(s).")
+    return 0
+
+
 def cmd_spawn_payload(payload_path: Path, mode: str, project: Optional[str]) -> int:
     """Spawn an engineer terminal using a SpawnPayload JSON file (envelope-rendered)."""
     sp = _load_spawn_payload_module()
@@ -472,6 +656,35 @@ def main() -> None:
     p_blocked.add_argument("--project-dir", type=Path, default=Path.cwd())
     p_blocked.add_argument("--json", dest="as_json", action="store_true")
 
+    p_dispatch_wave = sub.add_parser(
+        "dispatch-wave",
+        help="Parse a dispatch.md and spawn every engineer in the chosen wave",
+    )
+    p_dispatch_wave.add_argument(
+        "--from",
+        dest="dispatch_path",
+        type=Path,
+        default=Path(".workforce/dispatch.md"),
+        help="Path to dispatch.md (default: .workforce/dispatch.md)",
+    )
+    p_dispatch_wave.add_argument(
+        "--wave",
+        type=int,
+        default=1,
+        help="Wave number to dispatch (1-based; default: 1)",
+    )
+    p_dispatch_wave.add_argument(
+        "--mode",
+        default="auto",
+        choices=["auto", "tmux", "background", "print"],
+    )
+    p_dispatch_wave.add_argument("--project", default=None)
+    p_dispatch_wave.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print what would spawn without spawning anything",
+    )
+
     args = ap.parse_args()
 
     if args.cmd == "plan":
@@ -520,6 +733,15 @@ def main() -> None:
 
     elif args.cmd == "blocked-scan":
         sys.exit(cmd_blocked_scan(args.project_dir, args.as_json))
+
+    elif args.cmd == "dispatch-wave":
+        sys.exit(cmd_dispatch_wave(
+            args.dispatch_path,
+            args.wave,
+            args.mode,
+            args.project,
+            args.dry_run,
+        ))
 
 
 if __name__ == "__main__":
